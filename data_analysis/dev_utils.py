@@ -218,7 +218,7 @@ def resample_gauge_data(df, column, target_dt='D'):
 
 
 
-def read_gauge_data(fn, dtype = 'rws', transform = False, src_proj = None, dst_proj = None, resample24hr=False):
+def read_gauge_data(fn_list, dtype = 'grdc', transform = False, src_proj = None, dst_proj = None, resample24hr=False):
     
     '''
     Function that reads different types of gauge data - 
@@ -235,141 +235,160 @@ def read_gauge_data(fn, dtype = 'rws', transform = False, src_proj = None, dst_p
     
     dtypes = ['rws', 'grdc']
     
-    output_cols = ['loc_id', 'quantity', 'unit', 'date', 
-                   'time', 'value', 'epsg', 'X', 'Y']
-
-    assert Path(fn).exists(), '[ERROR] file not found'
+#     output_cols = ['loc_id', 'quantity', 'unit', 'date', 
+#                    'time', 'value', 'epsg', 'X', 'Y']
+    
+    output_cols = ['date', 'time', 'value', 'quantity', 
+                   'epsg', 'nan_val', 'loc_id', 'Y', 
+                   'X', 'upArea', 'unit']
+    
+    out_df = pd.DataFrame(columns=output_cols)
+    df_len = 0 
+    
     assert dtype.lower() in dtypes, '[ERROR] datasource {} not found'.format(dtype)
     
     if 'rws' in dtype.lower():
         
-        ## create output dataframe 
-        df = pd.read_csv(fn, sep='[;]', header = 0, 
-                         index_col = False, engine='python')
-                
-        use_cols = ['MEETPUNT_IDENTIFICATIE', 'GROOTHEID_ CODE', 
-                    'EENHEID_CODE', 'WAARNEMINGDATUM', 
-                    'WAARNEMINGTIJD', 'NUMERIEKEWAARDE', 'EPSG', 
-                    'X', 'Y']
+        for fn in fn_list:
+            
+            assert Path(fn).exists(), '[ERROR] file not found'
         
-        out_df = df[use_cols]
-        out_df.columns = output_cols 
-        
-        ## check measurements for nan values        
-        Q_vals = out_df['value']
-        X_vals = out_df['X']
-        Y_vals = out_df['Y']
-        
-        ## convert string to float and fill NaN values 
-        Q_vals = np.array([s.replace(',','.') for s in Q_vals])
-        Q_vals = Q_vals.astype(np.float)
-        Q_vals[Q_vals >= 32767.] = np.nan 
-                
-        ## convert string to float 
-        X_vals = np.array([s.replace(',','.') for s in X_vals])
-        X_vals = X_vals.astype(np.float)
-        
-        ## convert string to float 
-        Y_vals = np.array([s.replace(',','.') for s in Y_vals])
-        Y_vals = Y_vals.astype(np.float)
-        
-        ## update dataframe 
-        out_df = out_df.drop(columns=['value', 'X', 'Y'])
-        out_df['value'] = Q_vals
-        out_df['X'] = X_vals
-        out_df['Y'] = Y_vals
+            ## create output dataframe 
+            df = pd.read_csv(fn, sep='[;]', header = 0, 
+                             index_col = False, engine='python')
 
-        ## aggregate date and time - set as index 
-        ## set format same as glofas/efas date format 
-        datetime_series = out_df[['date', 'time']].agg(' '.join, axis=1)
-        out_df.index = pd.to_datetime( datetime_series, 
-                       format='%d-%m-%Y %H:%M:%S'
-                       ).dt.strftime('%Y-%m-%d %H:%M:%S')
-        
-        if resample24hr:
-            out_df = resample_gauge_data(out_df, 'value', target_dt='D')
-                
-        ## create metadata 
-        meta['nan'] = [np.nan] * 3 
-        meta['loc'] = np.unique( out_df['loc_id'].values )
-        meta['lat'] = np.unique( out_df['Y'].values)
-        meta['lon'] = np.unique( out_df['X'].values)
-        meta['upArea'] = [np.nan] * 3 
-        meta['description'] = [ np.unique(df['GROOTHEID_OMSCHRIJVING'].values)[0] ] * 3
-        meta['unit'] = [ np.unique(out_df['unit'].values)[0] ] * 3   
-        meta['epsg'] = [ int( np.unique(out_df['epsg'].values)[0] ) ] * 3 
-        meta['start_date'] = str(datetime_series.iloc[0])
-        meta['end_date'] = str(datetime_series.iloc[-1])
+            use_cols = ['MEETPUNT_IDENTIFICATIE', 'GROOTHEID_ CODE', 
+                        'EENHEID_CODE', 'WAARNEMINGDATUM', 
+                        'WAARNEMINGTIJD', 'NUMERIEKEWAARDE', 'EPSG', 
+                        'X', 'Y']
+
+            out_df = df[use_cols]
+            out_df.columns = output_cols 
+
+            ## check measurements for nan values        
+            Q_vals = out_df['value']
+            X_vals = out_df['X']
+            Y_vals = out_df['Y']
+
+            ## convert string to float and fill NaN values 
+            Q_vals = np.array([s.replace(',','.') for s in Q_vals])
+            Q_vals = Q_vals.astype(np.float)
+            Q_vals[Q_vals >= 32767.] = np.nan 
+
+            ## convert string to float 
+            X_vals = np.array([s.replace(',','.') for s in X_vals])
+            X_vals = X_vals.astype(np.float)
+
+            ## convert string to float 
+            Y_vals = np.array([s.replace(',','.') for s in Y_vals])
+            Y_vals = Y_vals.astype(np.float)
+
+            ## update dataframe 
+            out_df = out_df.drop(columns=['value', 'X', 'Y'])
+            out_df['value'] = Q_vals
+            out_df['X'] = X_vals
+            out_df['Y'] = Y_vals
+
+            ## aggregate date and time - set as index 
+            ## set format same as glofas/efas date format 
+            datetime_series = out_df[['date', 'time']].agg(' '.join, axis=1)
+            out_df.index = pd.to_datetime( datetime_series, 
+                           format='%d-%m-%Y %H:%M:%S'
+                           ).dt.strftime('%Y-%m-%d %H:%M:%S')
+
+            if resample24hr:
+                out_df = resample_gauge_data(out_df, 'value', target_dt='D')
+
+            ## create metadata 
+            meta['nan'] = [np.nan] * 3 
+            meta['loc'] = np.unique( out_df['loc_id'].values )
+            meta['lat'] = np.unique( out_df['Y'].values)
+            meta['lon'] = np.unique( out_df['X'].values)
+            meta['upArea'] = [np.nan] * 3 
+            meta['description'] = [ np.unique(df['GROOTHEID_OMSCHRIJVING'].values)[0] ] * 3
+            meta['unit'] = [ np.unique(out_df['unit'].values)[0] ] * 3   
+            meta['epsg'] = [ int( np.unique(out_df['epsg'].values)[0] ) ] * 3 
+            meta['start_date'] = str(datetime_series.iloc[0])
+            meta['end_date'] = str(datetime_series.iloc[-1])
      
     if 'grdc' in dtype.lower():
         
-        ## open file 
-        df = pd.read_csv(fn, skiprows=36, delimiter=';', encoding = 'ansi') # encoding = 'ascii'  # encoding = 'mbcs' # encoding = 'ansi'
+        for fn in fn_list:   
+            
+            assert Path(fn).exists(), '[ERROR] file not found'
+            
+            ## open file 
+            ##  other options for encoding:
+            ## encoding = 'ascii'  # encoding = 'mbcs' # encoding = 'ansi'
+            df = pd.read_csv(fn, skiprows=36, delimiter=';', encoding = 'ansi') 
         
-        ## extract data 
-        discharge = df[' Value'].values 
-        dt_dates = pd.to_datetime(df['YYYY-MM-DD'], yearfirst=True, 
-                                  format='%Y-%m-%d')
-        
-        ## what time is best?
-        dt_time =  pd.Series(['00:00:00']*len(dt_dates))
-        # dt_time =  pd.Series(['12:00:00']*len(dt_dates))
-        
-        ## create output dataframe 
-        out_df = pd.DataFrame( {'date':dt_dates, 'time':dt_time, 
-                                'value':discharge})
-        
-        ## get metadata 
-        df = open(fn)
-        lines = df.readlines()[:36]
-        for line in lines:
-            vals = line.split(' ')
+            ## extract data 
+            discharge = df[' Value'].values 
+            dt_dates = pd.to_datetime(df['YYYY-MM-DD'], yearfirst=True, 
+                                      format='%Y-%m-%d')
+
+            ## what time
+            dt_time =  pd.Series(['00:00:00']*len(dt_dates))
+            # dt_time =  pd.Series(['12:00:00']*len(dt_dates))
+
+            ## create output dataframe 
+            temp_df = pd.DataFrame( {'date':dt_dates, 'time':dt_time, 
+                                    'value':discharge})
+
+            ## get metadata 
+            byte_df = open(fn)
+            lines = byte_df.readlines()[:36]
             
-            if 'Station:' in vals:
-                meta['loc'] = vals[-1].replace('\n', '').lower()
-                out_df['loc_id'] = meta['loc']
+            for line in lines:
+                vals = line.split(' ')
+
+                if 'Station:' in vals:
+                    meta['loc'] = vals[-1].replace('\n', '').lower()
+                    temp_df['loc_id'] = meta['loc']
+
+                if 'missing' in vals:
+                    meta['nan'] = float(vals[-1])
+                    temp_df['nan_val'] = float(vals[-1])
+
+                if 'Latitude' in vals:
+                    meta['lat'] = float(vals[-1])
+                    temp_df['Y'] = meta['lat']
+
+                if 'Longitude' in vals:
+                    meta['lon'] = float(vals[-1])
+                    temp_df['X'] = meta['lon']
+
+                if 'Unit' in vals:
+                    meta['unit'] = vals[-1].replace('\n', '')
+                    temp_df['unit'] = meta['unit']
+
+                if 'area' in vals:
+                    meta['upArea(km2)'] = float(vals[-1])
+                    temp_df['upArea'] = meta['upArea(km2)']
+
+                if 'Content:' in vals:
+                    meta['description'] = ' '.join( vals[-3:] ).replace('\n', '').lower()
+
+                temp_df['quantity'] = 'Q'
+                temp_df['epsg'] = 4326
+
+                meta['start_date'] = str(dt_dates.iloc[0])
+                meta['end_date'] = str(dt_dates.iloc[-1])
+
+            ## set nan values 
+            temp_df.loc[ temp_df['value'] == meta['nan'], 'value' ] = np.nan        
+
+            ## close meta file 
+            byte_df.close()
+            lines = None 
+
+            ## aggregate date and time - set as index 
+            ## set format same as glofas/efas date format 
+            temp_df.index = pd.to_datetime( temp_df['date'],
+                                                format='%Y-%m-%dT%H:%M:%S.%f' 
+                                               ).dt.strftime('%Y-%m-%d %H:%M:%S')
             
-            if 'missing' in vals:
-                meta['nan'] = float(vals[-1])
-            
-            if 'Latitude' in vals:
-                meta['lat'] = float(vals[-1])
-                out_df['Y'] = meta['lat']
-            
-            if 'Longitude' in vals:
-                meta['lon'] = float(vals[-1])
-                out_df['X'] = meta['lon']
-            
-            if 'Unit' in vals:
-                meta['unit'] = vals[-1].replace('\n', '')
-                
-                out_df['unit'] = meta['unit']
-                
-            if 'area' in vals:
-                meta['upArea(km2)'] = float(vals[-1])
-            
-            if 'Content:' in vals:
-                meta['description'] = ' '.join( vals[-3:] ).replace('\n', '').lower()
-            
-            out_df['quantity'] = 'Q'
-            out_df['epsg'] = 4326
-            
-            meta['start_date'] = str(dt_dates.iloc[0])
-            meta['end_date'] = str(dt_dates.iloc[-1])
-        
-        ## set nan values 
-        out_df.loc[ out_df['value'] == meta['nan'], 'value' ] = np.nan        
-        
-        ## close meta file 
-        df.close()
-        lines = None 
-    
-        ## aggregate date and time - set as index 
-        ## set format same as glofas/efas date format 
-        out_df.index = pd.to_datetime( out_df['date'],
-                                            format='%Y-%m-%dT%H:%M:%S.%f' 
-                                           ).dt.strftime('%Y-%m-%d %H:%M:%S')
-        
+            out_df = out_df.append(temp_df)
     return out_df, meta
 
 
