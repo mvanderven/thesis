@@ -78,9 +78,9 @@ def open_grib(fn):
     assert Path(fn).exists(), '[ERROR] file {} not found'.format(fn)
     ds = xr.open_dataset(fn, engine='cfgrib')
     
-    print(ds)
+    # print(ds)
     
-    return
+    return ds 
 
 def open_efas(fn, dT='24'):
     
@@ -239,8 +239,8 @@ def read_gauge_data(fn_list, dtype = 'grdc', transform = False, src_proj = None,
 #                    'time', 'value', 'epsg', 'X', 'Y']
     
     output_cols = ['date', 'time', 'value', 'quantity', 
-                   'epsg', 'nan_val', 'loc_id', 'Y', 
-                   'X', 'upArea', 'unit']
+                   'epsg', 'nan_val', 'loc_id', 'y', 
+                   'x', 'upArea', 'unit']
     
     out_df = pd.DataFrame(columns=output_cols)
     df_len = 0 
@@ -267,8 +267,8 @@ def read_gauge_data(fn_list, dtype = 'grdc', transform = False, src_proj = None,
 
             ## check measurements for nan values        
             Q_vals = out_df['value']
-            X_vals = out_df['X']
-            Y_vals = out_df['Y']
+            X_vals = out_df['x']
+            Y_vals = out_df['y']
 
             ## convert string to float and fill NaN values 
             Q_vals = np.array([s.replace(',','.') for s in Q_vals])
@@ -284,10 +284,10 @@ def read_gauge_data(fn_list, dtype = 'grdc', transform = False, src_proj = None,
             Y_vals = Y_vals.astype(np.float)
 
             ## update dataframe 
-            out_df = out_df.drop(columns=['value', 'X', 'Y'])
+            out_df = out_df.drop(columns=['value', 'x', 'y'])
             out_df['value'] = Q_vals
-            out_df['X'] = X_vals
-            out_df['Y'] = Y_vals
+            out_df['x'] = X_vals
+            out_df['y'] = Y_vals
 
             ## aggregate date and time - set as index 
             ## set format same as glofas/efas date format 
@@ -302,8 +302,8 @@ def read_gauge_data(fn_list, dtype = 'grdc', transform = False, src_proj = None,
             ## create metadata 
             meta['nan'] = [np.nan] * 3 
             meta['loc'] = np.unique( out_df['loc_id'].values )
-            meta['lat'] = np.unique( out_df['Y'].values)
-            meta['lon'] = np.unique( out_df['X'].values)
+            meta['lat'] = np.unique( out_df['y'].values)
+            meta['lon'] = np.unique( out_df['x'].values)
             meta['upArea'] = [np.nan] * 3 
             meta['description'] = [ np.unique(df['GROOTHEID_OMSCHRIJVING'].values)[0] ] * 3
             meta['unit'] = [ np.unique(out_df['unit'].values)[0] ] * 3   
@@ -352,11 +352,11 @@ def read_gauge_data(fn_list, dtype = 'grdc', transform = False, src_proj = None,
 
                 if 'Latitude' in vals:
                     meta['lat'] = float(vals[-1])
-                    temp_df['Y'] = meta['lat']
+                    temp_df['y'] = meta['lat']
 
                 if 'Longitude' in vals:
                     meta['lon'] = float(vals[-1])
-                    temp_df['X'] = meta['lon']
+                    temp_df['x'] = meta['lon']
 
                 if 'Unit' in vals:
                     meta['unit'] = vals[-1].replace('\n', '')
@@ -392,8 +392,93 @@ def read_gauge_data(fn_list, dtype = 'grdc', transform = False, src_proj = None,
     return out_df, meta
 
 
+def search_ds(ds, search_dict, return_df = False):
+    
+    ## get search keys 
+    keys = list(search_dict.keys())
+    
+    ## loop through queries 
+    for key in keys:
+        sub_keys = search_dict[key].keys() 
+        
+        assert 'query' in sub_keys, '[ERROR] no search query found for {}'.format(key)
+        
+        if not 'method' in sub_keys:
+            method = None 
+        else:
+            method = search_dict[key]['method']
+        
+        if not 'tolerance' in sub_keys:
+            tolerance = None 
+        else:
+            tolerance = search_dict[key]['tolerance']
+        
+        query = search_dict[key]['query']
+        subset = ds.sel(query, method=method, tolerance = tolerance)
+    
+    ## create output dataframe instead of xarray dataset 
+    if return_df:
+        ix = subset.time.values
+        
+        out_df = pd.DataFrame(index=ix)
+        
+        data_vars = list( subset.data_vars )
+        # coord_vars = list(subset.coords)
 
+        for var in data_vars:        
+            out_df[var] = subset[var].data    
+                    
+        coord_vars = subset.coords.keys() 
+        for coord in coord_vars:
+            if not 'time' in coord:
+                out_df[coord] = subset[coord].values 
+                        
+        return out_df
+    
+    return subset
 
+def iterative_pixel_search(ds, location, init_x, init_y, x_tol, y_tol, n_iter, cols, coords=['time'], locs=['x','y']):
+    
+    ## determine search ranges based on tol and iterations 
+    x_range = np.linspace( init_x-x_tol, init_x+x_tol, n_iter)
+    y_range = np.linspace(init_y-y_tol, init_y+y_tol, n_iter)
+    
+    n_iter= 0 
+    
+    out_df = pd.DataFrame() 
+    
+    ## perform n_iter**2 iterations to get each pixel 
+    for i in range(len(x_range)):
+        x_iter = x_range[i]
+        
+        for j in range(len(y_range)):
+            y_iter = y_range[j]
+            
+            ## set up search query 
+            location_search = {
+                'loc': {
+                    'query': {
+                        locs[0]: x_iter,
+                        locs[1]: y_iter
+                                },
+                    'method': 'nearest'
+                        }}
+            
+            ## execute search 
+            search_result = search_ds(ds, location_search, return_df = True)
+            
+            ## save search result in dataframe 
+            search_result['match_gauge'] = location 
+            
+            ## add iteration_id 
+            search_result['iter_id'] = n_iter 
+            n_iter += 1 
+            
+            out_df = out_df.append(search_result)
+    
+    return out_df 
+    # return search_result 
+            
 
 
 
