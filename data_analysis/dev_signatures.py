@@ -107,15 +107,62 @@ def calc_cross_correlation(ts0, ts1, lag=0):
     return stats.pearsonr(ts0, ts1)[0]
 
 ########## FDC ##########
-def fit_FDC(ts, fdc_q, calc_slope = True, calc_LFratio = True):
-    return 
 
-#########################
+def calc_FDC(ts):
+    
+    ## sort values from small to large 
+    ts_sorted = ts.sort_values()
+    
+    ## calculate ranks of data 
+    ranks = stats.rankdata(ts_sorted, method='dense')
+
+    ## reverse rank order
+    ranks = ranks[::-1]
+    
+    ## calculate probability 
+    prob = ((ranks / (len(ts)+1))) * 100
+    return prob, ts_sorted 
+
+def calc_FDC_q(ts, fdc_q):
+    return_q = []
+    
+    ## calc FDC curve 
+    fdc_prob, fdc_val = calc_FDC(ts)
+    
+    ## find corresponding quantiles 
+    for q in fdc_q:        
+        ix_nearest = ( np.abs(fdc_prob - q) ).argmin() 
+        return_q.append(fdc_val[ix_nearest])   
+    return return_q 
+
+def calc_FDC_slope(ts, eps = 10e-6):
+    
+    #### from: https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R
+    ####
+    #### FDC slope from Sawicz et al. (2011)
+    #### log(33)-log(66)/(0.66-0.33)    
+    Q33, Q66 = calc_FDC_q(ts, [33, 66])  
+    return (np.log10(Q33+eps) - np.log10(Q66+eps)) / (0.66-0.33)
+
+def calc_LF_ratio(ts, eps = 10e-6):    
+    Q90, Q50 = calc_FDC_q(ts, [90, 50])
+    return (Q90+eps) / (Q50+eps)
+
+
+
+
+########### HYDRO ##############
 def calc_limbs(ts, calc_RL = True, calc_DL = True):
     return 
 
 
+def calc_i_bf():
+    ## from: https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R
+    
+    return 
 
+
+##### OVERVIEW 
 func_dict = {
     'normal':   {
         'func': calc_distr_normal,
@@ -143,7 +190,23 @@ func_dict = {
         },
     'n-ccorr':  {
          'func': calc_cross_correlation,
-        'cols': ['clag-{}-{}']    
+        'cols': ['clag-{}-{}']
+        },
+    'fdc-q':  {
+         'func': calc_FDC_q,
+        'cols': ['fdcQ-{}-{}']       
+        },
+    'fdc-slope':  {
+         'func': calc_FDC_slope,
+        'cols': ['fdcS-{}']  
+        },
+    'lf-ratio':  {
+         'func': calc_LF_ratio,
+        'cols': ['lf-{}']  
+        },
+    'bf-index':  {
+         'func': calc_i_bf,
+        'cols': ['bfi-{}']  
         }
     }
 
@@ -191,7 +254,7 @@ def reshape_data(df_obs, df_sim, locations, var='dis24'):
     return collect_df 
 
 def calc_features(df_obs, df_sim, locations, features = feature_options, time_window = ['all'], n_lag=[0,1], n_cross=[0],
-                  fdc_q = [0.01, 0.05, 0.1, 0.5, 0.9, 0.95, 0.99], mean_threshold = 0., var='dis24'):
+                  fdc_q = [1, 5, 10, 50, 90, 95, 99], mean_threshold = 0., var='dis24'):
         
     assert any(feature in feature_options for feature in features), '[ERROR] not all features can be calculated' 
     assert any(tw in option_time_window for tw in time_window), '[ERROR] not all time windows can be calculated' 
@@ -204,15 +267,49 @@ def calc_features(df_obs, df_sim, locations, features = feature_options, time_wi
     idx = [col for col in collect_df.columns.values if not 'date' in col]
     idx_gauges = [col for col in idx if 'gauge' in col]
     
+    ### ADD INITIAL ROWS 
     out_df['ID'] = idx 
-    out_df.set_index('ID', inplace=True)  
+    out_df.set_index('ID', inplace=True) 
     
+    ## add X/Y and lon/lat locations of gauge or model  
+    sim_idx = df_sim['match_gauge'].unique()
+    obs_idx = df_obs['loc_id'].unique()
     
+    for i in range(len(idx)):
+        loc_id = idx[i] 
+        
+        ### select correct df for location extraction 
+        if 'gauge' in loc_id:
+            ## observational data 
+            ## in lat/lon format in [y,x] columns
+            loc = loc_id.split('_')[-1]
+            
+            if loc in obs_idx:
+                df_loc = df_obs[df_obs['loc_id']==loc]
+                                        
+        else:
+            ## simulated data 
+            ## can contain [x,y] but also [lon,lat] data 
+            loc = loc_id.split('_')[1]
+            iter_id = loc_id.split('_')[-1]
+            
+            ## select correct iteration 
+            if loc in sim_idx:                
+                df_loc = df_sim[ (df_sim['match_gauge']==loc) & (df_sim['iter_id'] == int(iter_id)) ]
+        
+        ## add corresponding data to out_df 
+        for coord_type in ['x', 'y', 'lon', 'lat']:
+                if coord_type in df_loc.columns:                
+                    out_df.loc[loc_id, coord_type] = df_loc[coord_type].unique()[0]
+        
+    
+    ### FINISH PREP - start FEATURES                         
     ## organize features 
     stat_features =  [feat for feat in features if feat in stat_options]
     corr_features =  [feat for feat in features if feat in corr_options]
     fdc_features =   [feat for feat in features if feat in fdc_options]
     hydro_features = [feat for feat in features if feat in hydro_options]
+
     # print( len(features), ( len(stat_features)+ len(corr_features) + len(fdc_features) + len(hydro_features) ))
 
     for tw in time_window:
@@ -232,7 +329,7 @@ def calc_features(df_obs, df_sim, locations, features = feature_options, time_wi
             
             ## add to out_df 
             for i in range(len(return_cols)):
-                out_df[ return_cols[i].format(tw) ] = cdf.loc[i,:].values 
+                out_df[ return_cols[i].format(tw) ] = cdf.loc[i,:]#.values 
         
         ### calculate CORRELATION features 
         for feature in corr_features:
@@ -254,7 +351,7 @@ def calc_features(df_obs, df_sim, locations, features = feature_options, time_wi
                         
                         ## add to output df 
                         for j in range(len(return_cols)):
-                            out_df[ return_cols[j].format(n_lag[i], tw) ] = cdf.values
+                            out_df[ return_cols[j].format(n_lag[i], tw) ] = cdf#.values
 
             if 'n-ccorr' in feature:
                 ## prepare cross correlation calculation 
@@ -296,8 +393,25 @@ def calc_features(df_obs, df_sim, locations, features = feature_options, time_wi
                     out_df[ return_cols.format(n_cross[k], tw)] = results 
         
         for feature in fdc_features:
+            
+            if 'fdc-q' in feature:
+                                    
+                cdf = calc_df[idx].apply(func_dict[feature]['func'], fdc_q = fdc_q) 
+                
+                for i in range(len(fdc_q)):
+                    col_name = func_dict[feature]['cols'][0].format(fdc_q[i], tw)
+                    out_df[col_name] = cdf.loc[i,:]
+                
+            else:
+                return_cols = func_dict[feature]['cols']
+                cdf = calc_df[idx].apply(func_dict[feature]['func']) 
+                
+                out_df[ return_cols[0].format(tw) ] = cdf
+            
+        for feature in hydro_features:
             print(feature)
-
+            
+            
     print(out_df)
     return out_df 
 
