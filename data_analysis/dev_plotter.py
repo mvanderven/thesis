@@ -13,8 +13,9 @@ import numpy as np
 
 import dev_utils 
 
-marker_styles = ['.', ',', 'o', 'v', '^', '<', '>', '1', '2', '3', '4', '8', 's', 'p', '*', 'h',
-                 'H','+', 'x', 'D', 'd', '|', '_', 'P', 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+
+marker_styles = ['.', 'o', 'v', '^', '<', '>', '8', 's', 'p', '*', 'h',
+                 'H', 'X', 'D', 'd', 'P', 4, 5, 6, 7, 8, 9, 10, 11]
 
 
 def dashboard(ds, df, gauge_data, locations, thresh_min = 500, coords=['x', 'y'], var = 'dis24', model = 'efas', cell_size=5000):
@@ -26,8 +27,8 @@ def dashboard(ds, df, gauge_data, locations, thresh_min = 500, coords=['x', 'y']
     gauge_locs = []
     
     for loc in locations:
-        x_loc = gauge_data[ gauge_data['loc_id'] == loc]['x'].unique()[0]
-        y_loc = gauge_data[ gauge_data['loc_id'] == loc]['y'].unique()[0]
+        x_loc = gauge_data[ gauge_data['loc_id'] == loc]['lon'].unique()[0]
+        y_loc = gauge_data[ gauge_data['loc_id'] == loc]['lat'].unique()[0]
                 
         gauge_locs.append( [x_loc, y_loc])
     
@@ -119,7 +120,7 @@ def dashboard(ds, df, gauge_data, locations, thresh_min = 500, coords=['x', 'y']
     ax1.gridlines(draw_labels=True)
     
     #### ZOOM PLOT 
-    ax2 = fig1.add_subplot(gs[0,3:], projection = cp.crs.Mercator())
+    ax2 = fig1.add_subplot(gs[0,2:], projection = cp.crs.Mercator())
     ax2.set_title('Model grid zoom')
     
     ## imagery --> use xarray functionality, faster than matplotlib pcolormesh(?)
@@ -131,7 +132,7 @@ def dashboard(ds, df, gauge_data, locations, thresh_min = 500, coords=['x', 'y']
     
     
     ## plot iterators 
-    colors = plt.cm.winter(np.linspace(0,1, len(locations))) 
+    colors = plt.cm.autumn(np.linspace(0,1, len(locations))) 
     marker_style_ix = np.random.randint(low=0, high=len(marker_styles)-1, size=(len(locations)) )
     
     offset_x = (0.5*cell_size) / len(locations)
@@ -159,7 +160,9 @@ def dashboard(ds, df, gauge_data, locations, thresh_min = 500, coords=['x', 'y']
                         marker = marker_styles[marker_style_ix[i]], edgecolor='w',
                         linewidths = 0.8)
         
-        ax2.scatter(gauge_locs[i,0], gauge_locs[i,1], color=colors[i], marker='X', s = 100, edgecolor='k')
+        ax2.scatter(gauge_locs[i,0], gauge_locs[i,1], 
+                    color=colors[i], marker='X', s = 100, edgecolor='k',
+                    label = loc.capitalize())
         
     ## set window 
     if 'efas' in model:
@@ -170,6 +173,8 @@ def dashboard(ds, df, gauge_data, locations, thresh_min = 500, coords=['x', 'y']
         ax2.set_xlim(x_min-0.2, x_max+0.2)
         ax2.set_ylim(y_min-0.2, y_max+0.2)
     
+    fig1.subplots_adjust(right=0.85) 
+    ax2.legend(bbox_to_anchor=(1.25,1.), loc='upper left', borderaxespad=0., title='Gauges', numpoints=1)
     
     ##### TIMESERIES PLOT 
     fig2 = plt.figure(figsize=(12,8))      
@@ -182,7 +187,7 @@ def dashboard(ds, df, gauge_data, locations, thresh_min = 500, coords=['x', 'y']
     
         ts_obs = gauge_data[gauge_data['loc_id'] == loc]['value'].values
         obs_mean = np.mean(ts_obs)
-        ax.plot(datas, ts_obs, color=colors[i], linestyle='-.', label= 'Gauge {}'.format(loc))
+        ax.plot(datas, ts_obs, color=colors[i], linestyle='-.', label= 'Gauge {}'.format(loc.capitalize()))
         
         sub_df = df[ df['match_gauge'] == loc]
         
