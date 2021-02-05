@@ -352,11 +352,13 @@ def read_gauge_data(fn_list, dtype = 'grdc', transform = False, src_proj = None,
 
                 if 'Latitude' in vals:
                     meta['lat'] = float(vals[-1])
-                    temp_df['y'] = meta['lat']
+                    # temp_df['y'] = meta['lat']
+                    temp_df['lat'] = meta['lat']
 
                 if 'Longitude' in vals:
                     meta['lon'] = float(vals[-1])
-                    temp_df['x'] = meta['lon']
+                    # temp_df['x'] = meta['lon']
+                    temp_df['lon'] = meta['lon']
 
                 if 'Unit' in vals:
                     meta['unit'] = vals[-1].replace('\n', '')

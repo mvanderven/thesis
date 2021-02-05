@@ -42,10 +42,10 @@ print('File names loaded \n')
 #%% 
 
 ## load glofas data 
-print('Load GLOFAS data')
-glofas_dir = model_data_dict[keys_glofas[1]]
-ds_glofas = dev_utils.open_glofas(glofas_dir)
-print('GLOFAS data loaded \n')
+# print('Load GLOFAS data')
+# glofas_dir = model_data_dict[keys_glofas[1]]
+# ds_glofas = dev_utils.open_glofas(glofas_dir)
+# print('GLOFAS data loaded \n')
 
 #%% 
 
@@ -63,8 +63,8 @@ gauge_file_names = gauge_data_dict[gauge_keys[0]]
 gauge_data_grdc, meta_grdc = dev_utils.read_gauge_data( gauge_file_names, dtype='grdc')
  
 gauge_locs = gauge_data_grdc['loc_id'].unique()
-lat_coords = gauge_data_grdc['y'].unique()
-lon_coords = gauge_data_grdc['x'].unique() 
+lat_coords = gauge_data_grdc['lat'].unique()
+lon_coords = gauge_data_grdc['lon'].unique() 
 
 coords_4326 = np.array([lon_coords, lat_coords]).transpose()
 coords_3035 = dev_utils.reproject_coordinates(coords_4326, 4326, 3035)
@@ -88,7 +88,7 @@ time_search = {
             }}
 
 efas_time = dev_utils.search_ds(ds_efas, time_search, return_df = False)
-glofas_time = dev_utils.search_ds(ds_glofas, time_search, return_df = False)
+# glofas_time = dev_utils.search_ds(ds_glofas, time_search, return_df = False)
 print('Time search done \n')
 
 #%% 
@@ -153,8 +153,8 @@ print('Buffer search done \n')
 
 
 ## release glofas and efas xarray from memory (large memory)
-# ds_efas = None
-# ds_glofas = None 
+ds_efas = None
+ds_glofas = None 
 
 #%% 
 
@@ -171,7 +171,7 @@ glofas_set = collect_glofas[ collect_glofas['match_gauge'].isin(subset_locations
 #%% 
 
 ## show subset 
-show_efas_search = dev_plotter.dashboard(efas_time, efas_set, gauge_set, subset_locations)
+# show_efas_search = dev_plotter.dashboard(efas_time, efas_set, gauge_set, subset_locations)
 
 #%%
 ## with subset 
@@ -206,10 +206,6 @@ efas_feature_table = dev_signatures.calc_features(gauge_time, collect_efas, gaug
 
 
 #%% 
-
-
-
-
 
 
 
