@@ -19,7 +19,7 @@ sorted_features = {
     'stats':        ['normal', 'log', 'gev', 'gamma', 'poisson'],
     'correlation':  ['n-acorr', 'n-ccorr'],
     'fdc':          ['fdc-q', 'fdc-slope', 'lf-ratio'],
-    'hydro':        ['bf-index', 'dld', 'rld', 'rbf']
+    'hydro':        ['bf-index', 'dld', 'rld', 'rbf', 'src']
     }
 
 
@@ -149,18 +149,121 @@ def calc_LF_ratio(ts, eps = 10e-6):
     return (Q90+eps) / (Q50+eps)
 
 
-
-
 ########### HYDRO ##############
-def calc_limbs(ts, calc_RL = True, calc_DL = True):
-    return 
+
+def calc_limb_slope(ts):
+    
+    ### calc if rising or declining limb between
+    ### two points 
+    slope = ts.diff() 
+        
+    ### calcualate number of peaks
+    ### where d_ts[i] > 0 and d_ts[i+1] < 0 
+    N_peaks = 0 
+    
+    ### IMPROVE 
+    for i in range(len(slope)-1):
+        if slope[i] > 0 and slope[i+1]<0:
+            N_peaks += 1     
+            
+    return slope, N_peaks
 
 
-def calc_i_bf():
+def calc_RLD(ts):
+    
+    slope, N_peaks = calc_limb_slope(ts)
+    
+    delta_T = slope.index.to_series().diff()
+    
+    ### calculate total duration of positive limbs
+    ### in given period
+    T_rising_limbs = delta_T.where(slope>0).sum()
+
+    return N_peaks/T_rising_limbs.days
+
+def calc_DLD(ts):
+    
+    slope, N_peaks = calc_limb_slope(ts)
+    
+    delta_T = slope.index.to_series().diff()
+    
+    ### calculate total duration of negative limbs 
+    ### in given period 
+    T_declining_limbs = delta_T.where(slope<0).sum()
+    
+    return N_peaks/T_declining_limbs.days
+
+def calc_i_bf(ts):
     ## from: https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R
     
-    return 
+    
+    ## Calculate baseflow according to:
+    ## from: https://raw.githubusercontent.com/TonyLadson/BaseflowSeparation_LyneHollick/master/BFI.R
+    
+    alpha = 0.925  
+    
+    Q = ts.values
+    
+    Q_quick = np.zeros(len(ts)) 
+    Q_quick[0] = ts[0]
+    
+    for i in range(len(Q)-1):
+        Q_quick[i+1] = alpha * Q_quick[i] + 0.5*(1+alpha)*(Q[i+1]-Q[i])
+            
+    Q_base = np.where(Q_quick > 0, Q - Q_quick, Q)
+    return sum(Q_base)/ sum(Q)
 
+def calc_RBF(ts):
+    
+    ## Kuentz et al (2017) - Understanding hydrologic variability across
+    ## Europe through catchment classification 
+    ## "sum of absolute values of day-to-day changes in mean daily flow
+    ## divided by the sum of all daily flows"
+    
+    ## resample to daily values 
+    daily_ts = ts.resample('D').mean() 
+    
+    ## calculate sum of absolute values of day-to-day changes 
+    sum_abs_diff = daily_ts.diff().abs().sum() 
+    
+    ## calculate sum of daily flows 
+    sum_flows = daily_ts.sum() 
+
+    ## return Richard-Baker Flashiness
+    return sum_abs_diff/sum_flows
+
+def calc_recession_curve(ts):
+    
+    ### calc differences 
+    slope = ts.diff() 
+    
+    ### get recession values 
+    recession = slope.where(slope<0, 0)
+        
+    ### split timeseries in all recession times     
+    rc_slopes = [] 
+    lists = np.split(recession, np.where(recession>=0)[0]+1)
+    for _list in lists:
+        if len(_list) > 1:
+            
+            ## calculate d_T 
+            T_list = _list.index.to_series().diff()
+            T_total = T_list.sum().days 
+            
+            ## get slopes 
+            slopes = _list.values / T_list.dt.days
+            
+            S_total = _list.sum() / T_total 
+            rc_slopes.append(S_total)
+            # list_vals = _list.values 
+            # ## calculate slope 
+            # print( _list[-1], _list[0], np.argmax(list_vals))
+            # print(max(_list), min(_list))
+            # print()
+    
+    print( min(rc_slopes), max(rc_slopes), np.mean(rc_slopes), np.std(rc_slopes), np.std(rc_slopes)/np.mean(rc_slopes) )
+    
+    return 
 
 ##### OVERVIEW 
 func_dict = {
@@ -207,6 +310,22 @@ func_dict = {
     'bf-index':  {
          'func': calc_i_bf,
         'cols': ['bfi-{}']  
+        },
+    'rld':  {
+         'func': calc_RLD,
+        'cols': ['rld-{}']  
+        },
+    'dld':  {
+         'func': calc_DLD,
+        'cols': ['dld-{}']  
+        },
+    'rbf':  {
+         'func': calc_RBF,
+        'cols': ['rbf-{}']  
+        },
+    'src':  {
+         'func': calc_recession_curve,
+        'cols': ['src-{}']  
         }
     }
 
@@ -409,10 +528,9 @@ def calc_features(df_obs, df_sim, locations, features = feature_options, time_wi
                 out_df[ return_cols[0].format(tw) ] = cdf
             
         for feature in hydro_features:
-            print(feature)
+            cdf = calc_df[idx].apply(func_dict[feature]['func'])
+            out_df[ func_dict[feature]['cols'][0].format(tw) ] = cdf 
             
-            
-    print(out_df)
     return out_df 
 
 
