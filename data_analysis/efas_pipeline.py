@@ -150,14 +150,18 @@ show_efas_search = dev_plotter.dashboard(efas_time, efas_set, gauge_set, subset_
 
 ### SIGNATURES 
 calc_features = [
-                    'normal', 
-                   #  'log', 
-                   #    'gev', 
-                   #  'gamma', 
-                   #  'n-acorr', 
-                   #  'n-ccorr',
+                    # 'normal', 
+                    #  'log', 
+                    #    'gev', 
+                    #  'gamma', 
+                    #  'n-acorr', 
+                    #  'n-ccorr',
                     # 'fdc-q', 'fdc-slope', 'lf-ratio',
-                    'bf-index', 'dld', 'rld', 'rbf'
+                    # 'bf-index', 
+                    # 'dld', 
+                    # 'rld', 
+                    # 'rbf',
+                    'src'
                    ]
 
 efas_feature_table = dev_signatures.calc_features(gauge_time, collect_efas, gauge_locs, features=calc_features,
