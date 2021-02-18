@@ -8,7 +8,7 @@ Created on Mon Feb  1 15:43:32 2021
 import numpy as np 
 import pandas as pd 
 from scipy import stats 
-import hydrostats 
+# import hydrostats 
 import matplotlib.pyplot as plt 
 from pprint import pprint 
 
@@ -261,7 +261,7 @@ def calc_recession_curve(ts):
             # print(max(_list), min(_list))
             # print()
     
-    print( min(rc_slopes), max(rc_slopes), np.mean(rc_slopes), np.std(rc_slopes), np.std(rc_slopes)/np.mean(rc_slopes) )
+    # print( min(rc_slopes), max(rc_slopes), np.mean(rc_slopes), np.std(rc_slopes), np.std(rc_slopes)/np.mean(rc_slopes) )
     
     return 
 
@@ -421,7 +421,6 @@ def calc_features(df_obs, df_sim, locations, features = feature_options, time_wi
                 if coord_type in df_loc.columns:                
                     out_df.loc[loc_id, coord_type] = df_loc[coord_type].unique()[0]
         
-    
     ### FINISH PREP - start FEATURES                         
     ## organize features 
     stat_features =  [feat for feat in features if feat in stat_options]
