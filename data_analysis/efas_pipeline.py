@@ -23,6 +23,7 @@ import thesis_signatures
 #%% 
 
 print('Collect file names')
+
 ## set data paths 
 model_data = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\model_data")
 gauge_data = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\gauge_data") 
@@ -37,6 +38,7 @@ keys_efas = [key for key in keys if 'EFAS' in key]
 gauge_data_dict = utils.get_file_paths(gauge_data, 'txt', long_name=True)
 gauge_keys = list( gauge_data_dict.keys() )
 print('File names loaded \n')
+
 
 #%%
 
@@ -67,8 +69,8 @@ print('Gauge data loaded \n')
 
 print('Execute time search')
 ## set up time of search query 
-start_date = '2007-01-01'
-end_date = '2007-12-31'
+start_date = '2006-01-01'
+end_date = '2006-12-31'
 
 T0 = datetime.datetime.strptime(start_date, '%Y-%m-%d').strftime('%Y-%m-%d')
 T1 = datetime.datetime.strptime(end_date, '%Y-%m-%d').strftime('%Y-%m-%d') 
@@ -146,8 +148,7 @@ efas_set = collect_efas[ collect_efas['match_gauge'].isin(subset_locations)]
 
 #%% 
 
-### fix bug 
-# show_efas_search = plotter.dashboard(efas_time, efas_set, gauge_set, subset_locations)
+show_efas_search = plotter.dashboard(efas_time, efas_set, gauge_set, subset_locations)
  
 #%% 
 
@@ -170,11 +171,11 @@ calc_features = [
 efas_feature_table = thesis_signatures.calc_features(gauge_time, collect_efas, gauge_locs, features=calc_features,
                                                   n_lag=[1,2,5], n_cross = [0, 1, 5])
 
+#%% 
 print(efas_feature_table)
-
 # efas_feature_table.to_csv('test.csv')
 
-
+# print(efas_set)
 
 
 
