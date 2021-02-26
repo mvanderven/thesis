@@ -12,8 +12,8 @@ import pandas as pd
 
 ## to import own files 
 import sys 
-sys.path.append(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\code\data_analysis")
-import dev_utils
+# sys.path.append(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\code\data_analysis")
+import thesis_utils as utils 
 
 def grib_to_nc(fn_list, months, out_fn = None):
     
@@ -98,25 +98,30 @@ def grib_to_nc(fn_list, months, out_fn = None):
     
     return out_fn 
 
-## set data path 
-# data_path = Path(r'C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\playground') 
+if __name__ == '__main__':
 
-## get files and folders 
-# grib_files_dict = dev_utils.get_file_paths(data_path, 'grib', long_name=True) 
-# keys_grib = list( grib_files_dict.keys() )
-# test_grib = grib_files_dict[ keys_grib[1] ]
-
-
-# out_fn = [
-#     r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\playground\GLOFAS_2007\glofas_200710.nc", 
-#     r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\playground\GLOFAS_2007\glofas_200711.nc",
-#     r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\playground\GLOFAS_2007\glofas_200712.nc",
-#     ]
-
-# test_list = [test_grib[3]]
-# months = [10,11,12]
-
-# grib_to_nc(test_list, months, out_fn)
+    ## set data path 
+    data_path = Path(r'C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\model_data') 
+    
+    ## get files and folders 
+    grib_files_dict = utils.get_file_paths(data_path, 'grib', long_name=True) 
+    
+    if len(grib_files_dict) > 0:
+    
+        keys_grib = list( grib_files_dict.keys() )
+        test_grib = grib_files_dict[ keys_grib[1] ]
+        
+        
+        out_fn = [
+            r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\playground\GLOFAS_2007\glofas_200710.nc", 
+            r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\playground\GLOFAS_2007\glofas_200711.nc",
+            r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\playground\GLOFAS_2007\glofas_200712.nc",
+            ]
+        
+        test_list = [test_grib[3]]
+        months = [10,11,12]
+        
+        # grib_to_nc(test_list, months, out_fn)
 
 
 
