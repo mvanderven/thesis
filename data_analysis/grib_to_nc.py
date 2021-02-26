@@ -11,8 +11,6 @@ import numpy as np
 import pandas as pd 
 
 ## to import own files 
-import sys 
-# sys.path.append(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\code\data_analysis")
 import thesis_utils as utils 
 
 def grib_to_nc(fn_list, months, out_fn = None):
