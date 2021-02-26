@@ -11,7 +11,7 @@ import cartopy as cp
 import cartopy.feature as cfeature
 import numpy as np
 
-import dev_utils 
+import thesis_utils as utils 
 
 
 marker_styles = ['.', 'o', 'v', '^', '<', '>', '8', 's', 'p', '*', 'h',
@@ -38,7 +38,7 @@ def dashboard(ds, df, gauge_data, locations, thresh_min = 500, coords=['x', 'y']
         ## check projection - 3035 
         if not 3035 in projs:
             gauge_locs_og = np.array(gauge_locs)            
-            gauge_locs = dev_utils.reproject_coordinates(gauge_locs_og, int(projs[0]), 3035)
+            gauge_locs = utils.reproject_coordinates(gauge_locs_og, int(projs[0]), 3035)
     
     ### MODEL DATA - display 
     base_layer = np.log( ds[var].mean(dim='time') )
