@@ -51,22 +51,69 @@ time_format = {
 
 
 ##### STAT FUNCTIONS #####
-def calc_distr_normal(ts):
-    return [np.mean(ts), np.std(ts)]
 
-def calc_distr_log(ts):
-    Y = np.log(ts) 
+def calc_gof(model, stat):
+    
+    ###################### SAVE BUT NOT IMPLEMENTED
+    ## chi-squared 
+    ## transform both timeseries to frequencies 
+    # model_hist, model_bins = np.histogram(model, bins=5) 
+    # stat_hist, stat_bins = np.histogram(stat, bins = model_bins)
+    
+    ## calculate chi-squared 
+    # chi_stat, chi_p = stats.chisquare(model_hist, stat_hist)
+    # print(chi_stat, chi_p)
+    ######################
+    
+    
+    ## KS-test     
+    # D, p = stats.kstest(model, stat)
+    D, p = stats.ks_2samp(model, stat)
+    
+    ## return result of K-test 
+    ## if D greater than critical p-value --> rejected 
+    ## D > p 
+    ## if D < p --> accepted 
+    
+    ## return: 
+    ## 1 if goodness of fit accepted, 0 if not accepted ?? 
+    return int(D<p)
+
+
+def calc_distr_normal(ts):
+    mu = np.mean(ts)
+    sigma = np.std(ts) 
+    
+    ## calculate goodness of fit 
+    ## create an artificial dataset based on
+    ## derived mu and sigma (rvs)
+    gof = calc_gof(ts, stats.norm.rvs(loc=mu, scale=sigma, size=len(ts)))
+    return [mu, sigma, gof]
+
+def calc_distr_log(ts, eps=1e-6):
+    Y = np.log(ts+eps) 
     Y_mu = np.mean(Y)
     Y_sigma = np.std(Y)
+    # gof_Y = calc_gof(ts, stats.lognorm.rvs(s=Y_sigma, scale=Y_mu, size=len(ts)))  
     
     X_mu = np.exp(Y_mu)
     X_sigma = X_mu * Y_sigma 
-    return [Y_mu, Y_sigma, X_mu, X_sigma]
+    
+    ## calculate goodness of fit 
+    ## create an artificial dataset based on
+    ## derived mu and sigma (rvs)
+    gof_X = calc_gof(ts, stats.lognorm.rvs(s=X_sigma, scale=X_mu, size=len(ts)))
+    
+    return [Y_mu, Y_sigma, X_mu, X_sigma, gof_X]
 
 def calc_distr_gev(ts):
     a = np.pi / ((6**0.5)*np.std(ts))
     u = np.mean(ts) - (0.577/a)
-    return [u,a]
+    ## calculate goodness of fit 
+    ## create an artificial dataset based on
+    ## derived a and u 
+    gof = calc_gof(ts, stats.genextreme.rvs(c=0, loc = u, scale = a, size=len(ts)))
+    return [u,a, gof]
 
 def calc_distr_gamma(ts):
     mu = np.mean(ts)
@@ -75,10 +122,15 @@ def calc_distr_gamma(ts):
     k = (mu/sigma)**2 
     theta = sigma / (mu/sigma)
     
+    ## calculate goodness of fit 
+    ## create an artificial dataset based on
+    ## derived k and theta (rvs)
+    gof = calc_gof(ts, stats.gamma.rvs(a = k, scale = theta, size=len(ts)))
+
     # alpha = shape_k 
     # beta = 1 / scale_theta 
     # return [alpha, beta]
-    return [k, theta]
+    return [k, theta, gof]
 
 def calc_distr_poisson(ts):
     return None 
@@ -217,6 +269,7 @@ def calc_RBF(ts):
     
     ## Kuentz et al (2017) - Understanding hydrologic variability across
     ## Europe through catchment classification 
+    ## Richard-Baker Flashiness: 
     ## "sum of absolute values of day-to-day changes in mean daily flow
     ## divided by the sum of all daily flows"
     
@@ -269,19 +322,19 @@ def calc_recession_curve(ts):
 func_dict = {
     'normal':   {
         'func': calc_distr_normal,
-        'cols': ['Nm-{}', 'Ns-{}']
+        'cols': ['Nm-{}', 'Ns-{}', 'N-gof-{}']
         },
     'log':      {
         'func': calc_distr_log,
-        'cols': ['Lmy-{}', 'Lsy-{}', 'Lmx-{}', 'Lsx-{}']        
+        'cols': ['Lmy-{}', 'Lsy-{}', 'Lmx-{}', 'Lsx-{}', 'L-gof-{}']        
         },
     'gev':      {
          'func': calc_distr_gev,
-        'cols': ['Gu-{}', 'Ga-{}']       
+        'cols': ['Gu-{}', 'Ga-{}', 'Gev-gof-{}']       
         },
     'gamma':    {
         'func': calc_distr_gamma,
-        'cols': ['Gk-{}', 'Gt-{}']        
+        'cols': ['Gk-{}', 'Gt-{}', 'G-gof-{}']        
         },
     'poisson':  {
          'func': calc_distr_poisson,
@@ -438,7 +491,7 @@ def calc_features(df_obs, df_sim, locations, features = feature_options, time_wi
         
         ### calculate STATISTIC features 
         for feature in stat_features:
-            
+            print(feature)
             ## get expected column names 
             return_cols = func_dict[feature]['cols']
             
