@@ -6,14 +6,14 @@ Created on Fri Feb  5 11:45:08 2021
 """
 import numpy as np 
 import pandas as pd 
-import xarray as xr 
-import cfgrib
+# import xarray as xr 
+# import cfgrib
 from pathlib import Path 
-from pprint import pprint
-import pyproj
+# from pprint import pprint
+# import pyproj
 import datetime
 import matplotlib.pyplot as plt 
-import cartopy 
+# import cartopy 
 
 ## import own functions  --> check bar in top right hand to directory of files
 import thesis_utils as utils 
@@ -55,7 +55,10 @@ gauge_file_names = gauge_data_dict[gauge_keys[0]]
 gauge_data_grdc, meta_grdc = utils.read_gauge_data( gauge_file_names, dtype='grdc')
 
 print(gauge_data_grdc)
- 
+
+
+#%% 
+
 gauge_locs = gauge_data_grdc['loc_id'].unique()
 lat_coords = gauge_data_grdc['lat'].unique()
 lon_coords = gauge_data_grdc['lon'].unique() 
@@ -134,32 +137,17 @@ print('Buffer search done \n')
 ## release glofas and efas xarray from memory (large memory)
 ds_efas = None
 
-
-#%% 
-
-## now: 2 dataframes with model data around gauges 
-## gauge timeseries with corresponding values 
-
-subset_locations = ['andernach', 'nettegut', 'friedrichsthal'] 
-
-gauge_set = gauge_time[gauge_time['loc_id'].isin(subset_locations)]
-efas_set = collect_efas[ collect_efas['match_gauge'].isin(subset_locations)]
-
-
-#%% 
-
-show_efas_search = plotter.dashboard(efas_time, efas_set, gauge_set, subset_locations)
  
 #%% 
 
 ### SIGNATURES 
 calc_features = [
                     'normal', 
-                      'log', 
-                        'gev', 
-                      'gamma', 
-                      'n-acorr', 
-                      'n-ccorr',
+                    'log', 
+                    'gev', 
+                    'gamma', 
+                    'n-acorr', 
+                    'n-ccorr',
                     'fdc-q', 'fdc-slope', 'lf-ratio',
                     'bf-index', 
                     'dld', 
@@ -168,14 +156,33 @@ calc_features = [
                     'src'
                    ]
 
-efas_feature_table = thesis_signatures.calc_features(gauge_time, collect_efas, gauge_locs, features=calc_features,
-                                                  n_lag=[1,2,5], n_cross = [0, 1, 5])
+efas_feature_table = thesis_signatures.calc_features(gauge_time, collect_efas, 
+                                                     gauge_locs, 
+                                                     features=calc_features,
+                                                     n_lag=[1,2,5], 
+                                                     n_cross = [0, 1, 5])
 
 #%% 
-print(efas_feature_table)
-# efas_feature_table.to_csv('test.csv')
 
-# print(efas_set)
+import seaborn as sns 
+
+cols_analysis = ['Nm-all', 'Ns-all', 'N-gof-all', 'Lmy-all',
+        'Lsy-all', 'Lmx-all', 'Lsx-all', 'L-gof-all', 'Gu-all', 'Ga-all',
+        'Gev-gof-all', 'Gk-all', 'Gt-all', 'G-gof-all', 'alag-1-all',
+        'alag-2-all', 'alag-5-all', 'clag-0-all', 'clag-1-all', 'clag-5-all',
+        'fdcQ-1-all', 'fdcQ-5-all', 'fdcQ-10-all', 'fdcQ-50-all', 'fdcQ-90-all',
+        'fdcQ-95-all', 'fdcQ-99-all', 'fdcS-all', 'lf-all', 'bfi-all',
+        'dld-all', 'rld-all', 'rbf-all', 's_rc-all', 'T0_rc-all']
+
+plt.figure()
+plt.title('Cross-correlation')
+sns.heatmap(efas_feature_table[cols_analysis].corr(), vmin=-1, vmax=1, cmap='bwr' )
+plt.show() 
+
+#%%  
+
+
+
 
 
 
