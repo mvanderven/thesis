@@ -293,6 +293,7 @@ def calc_recession_curve(ts):
     ### assume power-law relationship
     ### dS/dt = -Q
     ### -dQ/dt = a*Q^b
+    ### log(-dQ/dt) = log(a)+b*log(Q)
     
     ### plot -dQ/dt vs Q 
     ### fit a straight line through it
@@ -324,16 +325,19 @@ def calc_recession_curve(ts):
     ### now all points collected of Q and dQ/dt (<0) 
     ## fit a straight line though these points in log-log plot 
     ## log(dQ/dt) = log(a) + b log(Q)
-    ## a/T0 = intercept 
+    ## T0 = intercept 
     ## b = slope 
     
     log_dQ = np.log10(collect_dQ) 
     log_Q = np.log10(collect_Q) 
     
     slope, intercept, log_r, log_p, log_s = stats.linregress(log_Q, log_dQ)     
-    b, a, r_value, p_value, std_err = stats.linregress(collect_Q, collect_dQ)    
+    # slope, intercept, r_value, p_value, std_err = stats.linregress(collect_Q, collect_dQ)    
+    
+    b = slope 
+    T0 = intercept 
       
-    return [b, a]
+    return [b, T0]
 
 ##### OVERVIEW 
 func_dict = {
@@ -609,10 +613,6 @@ def calc_features(df_obs, df_sim, locations, features = feature_options, time_wi
             else:
                 col_name = return_cols[0].format(tw)
                 out_df[ col_name ] = cdf
-                
-                
-            
-             
             
     return out_df 
 
