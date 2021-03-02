@@ -317,6 +317,9 @@ def read_gauge_data(fn_list, dtype = 'grdc', transform = False, src_proj = None,
             
             assert Path(fn).exists(), '[ERROR] file not found'
             
+            ## get gauge id nr from filename             
+            gauge_id_nr = fn.name.split('_')[0]
+            
             ## open file 
             ##  other options for encoding:
             ## encoding = 'ascii'  # encoding = 'mbcs' # encoding = 'ansi'
@@ -339,12 +342,15 @@ def read_gauge_data(fn_list, dtype = 'grdc', transform = False, src_proj = None,
             byte_df = open(fn)
             lines = byte_df.readlines()[:36]
             
+            temp_df['loc_id'] = gauge_id_nr 
+            meta['loc_id'] = gauge_id_nr 
+            
             for line in lines:
                 vals = line.split(' ')
 
                 if 'Station:' in vals:
-                    meta['loc'] = vals[-1].replace('\n', '').lower()
-                    temp_df['loc_id'] = meta['loc']
+                    meta['loc_name'] = vals[-1].replace('\n', '').lower()
+                    temp_df['loc_id_name'] = meta['loc_name']
 
                 if 'missing' in vals:
                     meta['nan'] = float(vals[-1])
