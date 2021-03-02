@@ -7,7 +7,7 @@ Created on Mon Feb  1 15:43:32 2021
 
 import numpy as np 
 import pandas as pd 
-from scipy import stats 
+from scipy import stats, optimize 
 # import hydrostats 
 import matplotlib.pyplot as plt 
 from pprint import pprint 
@@ -290,33 +290,50 @@ def calc_recession_curve(ts):
     ### calc differences 
     slope = ts.diff() 
     
+    ### assume power-law relationship
+    ### dS/dt = -Q
+    ### -dQ/dt = a*Q^b
+    
+    ### plot -dQ/dt vs Q 
+    ### fit a straight line through it
+    ### a = intercept 
+    ### b = slope 
+        
     ### get recession values 
     recession = slope.where(slope<0, 0)
-        
-    ### split timeseries in all recession times     
-    rc_slopes = [] 
+
+    ### split timeseries in all recession times 
     lists = np.split(recession, np.where(recession>=0)[0]+1)
+    
+    collect_dQ = []
+    collect_Q = [] 
+    
     for _list in lists:
+        
+        ## only append recession periods 
         if len(_list) > 1:
+            ixs = _list.index 
+            Q_list = ts[ixs]
             
-            ## calculate d_T 
-            T_list = _list.index.to_series().diff()
-            T_total = T_list.sum().days 
-            
-            ## get slopes 
-            slopes = _list.values / T_list.dt.days
-            
-            S_total = _list.sum() / T_total 
-            rc_slopes.append(S_total)
-            # list_vals = _list.values 
-            # ## calculate slope 
-            # print( _list[-1], _list[0], np.argmax(list_vals))
-            # print(max(_list), min(_list))
-            # print()
+            ## save all values in recession period 
+            for i in range(len(_list)):
+                if (_list[i] < -1e-6) and (Q_list[i] > 1e-6):
+                    collect_dQ.append( -_list[i] )
+                    collect_Q.append( Q_list[i] )
+
+    ### now all points collected of Q and dQ/dt (<0) 
+    ## fit a straight line though these points in log-log plot 
+    ## log(dQ/dt) = log(a) + b log(Q)
+    ## a/T0 = intercept 
+    ## b = slope 
     
-    # print( min(rc_slopes), max(rc_slopes), np.mean(rc_slopes), np.std(rc_slopes), np.std(rc_slopes)/np.mean(rc_slopes) )
+    log_dQ = np.log10(collect_dQ) 
+    log_Q = np.log10(collect_Q) 
     
-    return 
+    slope, intercept, log_r, log_p, log_s = stats.linregress(log_Q, log_dQ)     
+    b, a, r_value, p_value, std_err = stats.linregress(collect_Q, collect_dQ)    
+      
+    return [b, a]
 
 ##### OVERVIEW 
 func_dict = {
@@ -378,7 +395,7 @@ func_dict = {
         },
     'src':  {
          'func': calc_recession_curve,
-        'cols': ['src-{}']  
+        'cols': ['s_rc-{}', 'T0_rc-{}']  
         }
     }
 
@@ -449,9 +466,10 @@ def calc_features(df_obs, df_sim, locations, features = feature_options, time_wi
     
     for i in range(len(idx)):
         loc_id = idx[i] 
-        
+            
         ### select correct df for location extraction 
         if 'gauge' in loc_id:
+
             ## observational data 
             ## in lat/lon format in [y,x] columns
             loc = loc_id.split('_')[-1]
@@ -580,8 +598,21 @@ def calc_features(df_obs, df_sim, locations, features = feature_options, time_wi
                 out_df[ return_cols[0].format(tw) ] = cdf
             
         for feature in hydro_features:
+            return_cols = func_dict[feature]['cols']
             cdf = calc_df[idx].apply(func_dict[feature]['func'])
-            out_df[ func_dict[feature]['cols'][0].format(tw) ] = cdf 
+            
+            if len(return_cols) > 1:
+                
+                for i in range(len(return_cols)):
+                    col_name = return_cols[i].format(tw)    
+                    out_df[col_name] = cdf.loc[i,:]
+            else:
+                col_name = return_cols[0].format(tw)
+                out_df[ col_name ] = cdf
+                
+                
+            
+             
             
     return out_df 
 
