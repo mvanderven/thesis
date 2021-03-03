@@ -83,9 +83,13 @@ def calc_gof(model, stat):
 
 
 def calc_distr_normal(ts):
+    
+    ## drop remaining missing values 
+    ts = ts.dropna() 
+    
     mu = np.mean(ts)
     sigma = np.std(ts) 
-    
+        
     ## calculate goodness of fit 
     ## create an artificial dataset based on
     ## derived mu and sigma (rvs)
@@ -93,6 +97,10 @@ def calc_distr_normal(ts):
     return [mu, sigma, gof]
 
 def calc_distr_log(ts, eps=1e-6):
+    
+    ## drop remaining missing values 
+    ts = ts.dropna() 
+    
     Y = np.log(ts+eps) 
     Y_mu = np.mean(Y)
     Y_sigma = np.std(Y)
@@ -109,6 +117,10 @@ def calc_distr_log(ts, eps=1e-6):
     return [Y_mu, Y_sigma, X_mu, X_sigma, gof_X]
 
 def calc_distr_gev(ts):
+    
+    ## drop remaining missing values 
+    ts = ts.dropna() 
+    
     a = np.pi / ((6**0.5)*np.std(ts))
     u = np.mean(ts) - (0.577/a)
     ## calculate goodness of fit 
@@ -118,6 +130,10 @@ def calc_distr_gev(ts):
     return [u,a, gof]
 
 def calc_distr_gamma(ts):
+    
+    ## drop remaining missing values 
+    ts = ts.dropna() 
+    
     mu = np.mean(ts)
     sigma = np.std(ts)
 
@@ -141,6 +157,12 @@ def calc_distr_poisson(ts):
 ###### CORRELATION ######
 
 def calc_auto_correlation(ts, lag=0):
+    
+    print(len(ts))
+    ## drop remaining missing values 
+    ts = ts.dropna() 
+    print(len(ts))
+    
     if lag > 0:
         ts0 = ts[0:-lag]
         ts1 = ts[lag:]
@@ -151,6 +173,11 @@ def calc_auto_correlation(ts, lag=0):
     return stats.pearsonr(ts0,ts1)[0]
 
 def calc_cross_correlation(ts0, ts1, lag=0):
+    
+    ## drop remaining missing values 
+    # ts = ts.dropna() 
+    # ts = ts.dropna()
+    
     if lag > 0:
         ts0 = ts0[0:-lag]
         ts1 = ts1[lag:] 
@@ -521,7 +548,7 @@ def calc_features(collect_df, locations, features = feature_options, time_window
     idx = [col for col in collect_df.columns.values if not 'date' in col]
     idx_gauges = [col for col in idx if 'gauge' in col]
         
-    ### ADD INITIAL ROWS 
+    ### ADD INITIAL ROWS with IDs & locations 
     out_df['ID'] = idx 
     out_df.set_index('ID', inplace=True) 
     
@@ -544,8 +571,6 @@ def calc_features(collect_df, locations, features = feature_options, time_window
     corr_features =  [feat for feat in features if feat in corr_options]
     fdc_features =   [feat for feat in features if feat in fdc_options]
     hydro_features = [feat for feat in features if feat in hydro_options]
-
-    # print( len(features), ( len(stat_features)+ len(corr_features) + len(fdc_features) + len(hydro_features) ))
 
     for tw in time_window:
         
