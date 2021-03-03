@@ -104,6 +104,12 @@ print('Time search done \n')
 ## crop gauge timeseries to dates 
 gauge_time = gauge_data_grdc[ (gauge_data_grdc['date'] >= T0) & (gauge_data_grdc['date'] <= T1)]
 
+#%%
+## check if nan-values for gauges 
+## in considered time period 
+## if total gauge period is nan - gauge is thus dropped 
+gauge_time = gauge_time.dropna(subset=['value'])
+
 ## release total gauge memory (?)
 # gauge_data_grdc = None 
 
@@ -161,25 +167,28 @@ collect_efas_resampled = utils.resample_gauge_data(collect_efas, 'dis06', target
 ## combine efas and gauge time series to
 ## a df with unique timeseries in each column 
 ## and a df with coordinates of each gauge + iterations 
-collect_timeseries, collect_locations = thesis_signatures.reshape_data(gauge_time, collect_efas_resampled,
-                                                    gauge_locs, var='dis06')
+collect_timeseries, collect_locations = thesis_signatures.reshape_data(gauge_time, 
+                                                                       collect_efas_resampled,
+                                                                       gauge_locs, 
+                                                                       var='dis06',
+                                                                       T1 = end_date)
 
 #%% 
 
 ### SIGNATURES 
 calc_features = [
                     'normal', 
-                    'log', 
-                    'gev', 
-                    'gamma', 
-                    'n-acorr', 
-                    'n-ccorr',
-                    'fdc-q', 'fdc-slope', 'lf-ratio',
-                    'bf-index', 
-                    'dld', 
-                    'rld', 
-                    'rbf',
-                    'src'
+                    # 'log', 
+                    # 'gev', 
+                    # 'gamma', 
+                    # 'n-acorr', 
+                    # 'n-ccorr',
+                    # 'fdc-q', 'fdc-slope', 'lf-ratio',
+                    # 'bf-index', 
+                    # 'dld', 
+                    # 'rld', 
+                    # 'rbf',
+                    # 'src'
                    ]
 
 efas_feature_table = thesis_signatures.calc_features(collect_timeseries, 
@@ -187,7 +196,12 @@ efas_feature_table = thesis_signatures.calc_features(collect_timeseries,
                                                      features=calc_features,
                                                      n_lag=[1,2,5], 
                                                      n_cross = [0, 1, 5],
-                                                     var='dis06')
+                                                     var='dis06',
+                                                     T_end = end_date)
+
+#%% 
+
+print(efas_feature_table)
 
 #%% 
 
