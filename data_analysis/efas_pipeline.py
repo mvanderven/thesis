@@ -14,6 +14,7 @@ from pathlib import Path
 import datetime
 import matplotlib.pyplot as plt 
 # import cartopy 
+import time 
 
 ## import own functions  --> check bar in top right hand to directory of files
 import thesis_utils as utils 
@@ -22,11 +23,15 @@ import thesis_signatures
 
 #%% 
 
+start_time = time.time()
+
 print('Collect file names')
 
+home_dir = Path.home()
+
 ## set data paths 
-model_data = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\model_data")
-gauge_data = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\gauge_data") 
+model_data = home_dir / Path(r"Documents\Master EE\Year 4\Thesis\data\model_data")
+gauge_data = home_dir / Path(r"Documents\Master EE\Year 4\Thesis\data\training_data")
 
 ## model data paths 
 model_data_dict = utils.get_file_paths(model_data, 'nc', long_name=True)
@@ -43,25 +48,32 @@ print('File names loaded \n')
 #%%
 
 print('Load EFAS data')
-efas_dir = model_data_dict[keys_efas[2]]
-ds_efas = utils.open_efas(efas_dir)
+efas_dir = model_data_dict[keys_efas[0]]
+ds_efas = utils.open_efas(efas_dir, dT='06')
 print('EFAS data loaded \n')
 
 #%%
-
 print('Load gauge data')
+start_time = time.time()
+
+
 ## load gauge data 
 gauge_file_names = gauge_data_dict[gauge_keys[0]] 
 gauge_data_grdc, meta_grdc = utils.read_gauge_data( gauge_file_names, dtype='grdc')
 
-print(gauge_data_grdc)
+print(gauge_data_grdc.head())
+
+print("--- {:.2f} minutes ---".format( (time.time() - start_time)/60.) )
 
 
 #%% 
 
-gauge_locs = gauge_data_grdc['loc_id'].unique()
-lat_coords = gauge_data_grdc['lat'].unique()
-lon_coords = gauge_data_grdc['lon'].unique() 
+### sort data based on loc_id 
+sorted_gauge_data = gauge_data_grdc[['loc_id', 'lat', 'lon']].groupby(by='loc_id')
+lat_coords = sorted_gauge_data['lat'].mean()
+lon_coords = sorted_gauge_data['lon'].mean()
+
+gauge_locs = lat_coords.index 
 
 coords_4326 = np.array([lon_coords, lat_coords]).transpose()
 coords_3035 = utils.reproject_coordinates(coords_4326, 4326, 3035)
@@ -72,8 +84,8 @@ print('Gauge data loaded \n')
 
 print('Execute time search')
 ## set up time of search query 
-start_date = '2006-01-01'
-end_date = '2006-12-31'
+start_date = '1991-01-01'
+end_date = '1991-01-31'
 
 T0 = datetime.datetime.strptime(start_date, '%Y-%m-%d').strftime('%Y-%m-%d')
 T1 = datetime.datetime.strptime(end_date, '%Y-%m-%d').strftime('%Y-%m-%d') 
@@ -93,7 +105,7 @@ print('Time search done \n')
 gauge_time = gauge_data_grdc[ (gauge_data_grdc['date'] >= T0) & (gauge_data_grdc['date'] <= T1)]
 
 ## release total gauge memory (?)
-gauge_data_grdc = None 
+# gauge_data_grdc = None 
 
 #%%
 
@@ -135,8 +147,7 @@ print('Buffer search done \n')
 
 
 ## release glofas and efas xarray from memory (large memory)
-ds_efas = None
-
+# ds_efas = None
  
 #%% 
 
@@ -156,11 +167,13 @@ calc_features = [
                     'src'
                    ]
 
-efas_feature_table = thesis_signatures.calc_features(gauge_time, collect_efas, 
+efas_feature_table = thesis_signatures.calc_features(gauge_time, 
+                                                     collect_efas, 
                                                      gauge_locs, 
                                                      features=calc_features,
                                                      n_lag=[1,2,5], 
-                                                     n_cross = [0, 1, 5])
+                                                     n_cross = [0, 1, 5],
+                                                     var='dis06')
 
 #%% 
 
@@ -181,15 +194,14 @@ plt.show()
 
 #%%  
 
+### label with dataset 
+labelled_fn = gauge_data / "grdc_efas_selection_20210218-1.csv" 
+print(labelled_fn.exists())
 
 
 
-
-
-
-
-
-
+#%% 
+print("--- {:.2f}s seconds ---".format(time.time() - start_time))
 
 
 
