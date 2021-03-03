@@ -23,7 +23,7 @@ import thesis_signatures
 
 #%% 
 
-start_time = time.time()
+start_time_overall = time.time()
 
 print('Collect file names')
 
@@ -149,6 +149,21 @@ print('Buffer search done \n')
 ## release glofas and efas xarray from memory (large memory)
 # ds_efas = None
  
+
+#%% 
+
+## resample timeseries from 6 hourly to 24 hourly 
+
+collect_efas_resampled = utils.resample_gauge_data(collect_efas, 'dis06', target_dt='D')
+
+#%% 
+
+## combine efas and gauge time series to
+## a df with unique timeseries in each column 
+## and a df with coordinates of each gauge + iterations 
+collect_timeseries, collect_locations = thesis_signatures.reshape_data(gauge_time, collect_efas_resampled,
+                                                    gauge_locs, var='dis06')
+
 #%% 
 
 ### SIGNATURES 
@@ -167,9 +182,8 @@ calc_features = [
                     'src'
                    ]
 
-efas_feature_table = thesis_signatures.calc_features(gauge_time, 
-                                                     collect_efas, 
-                                                     gauge_locs, 
+efas_feature_table = thesis_signatures.calc_features(collect_timeseries, 
+                                                     collect_locations,
                                                      features=calc_features,
                                                      n_lag=[1,2,5], 
                                                      n_cross = [0, 1, 5],
@@ -201,7 +215,7 @@ print(labelled_fn.exists())
 
 
 #%% 
-print("--- {:.2f}s seconds ---".format(time.time() - start_time))
+print("--- {:.2f}s seconds ---".format(time.time() - start_time_overall))
 
 
 

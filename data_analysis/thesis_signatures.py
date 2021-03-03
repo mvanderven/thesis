@@ -11,7 +11,9 @@ from scipy import stats, optimize
 # import hydrostats 
 import matplotlib.pyplot as plt 
 from pprint import pprint 
+from datetime import datetime 
 
+import thesis_utils as utils 
 
 #### FEATURE TYPES 
 
@@ -287,6 +289,10 @@ def calc_RBF(ts):
 
 def calc_recession_curve(ts):
     
+    ## based on:
+    ## Stoelzle, Stahl & Weiler (2013) Are streamflow recession characteristics really characteristic?
+    ## Westerberg & McMillan (2015) Uncertainty in hydrological signatures
+    
     ### calc differences 
     slope = ts.diff() 
     
@@ -409,92 +415,128 @@ func_dict = {
 ##############################################
 
 
-def reshape_data(df_obs, df_sim, locations, var='dis24'):
+def reshape_data(df_obs, df_sim, locations, var='dis24', T0 = '1991-01-01', T1 = '2020-12-31'):
     
-    ## create empty datarame to add all simulation and observations
+    ## create empty dataframe to add all simulation and observations
     ## in columns 
     collect_df = pd.DataFrame() 
     
+    ## create empty dataframe + lists for data collection 
+    loc_df = pd.DataFrame()
+    row_name = [] 
+    row_id   = []
+    list_lat = []
+    list_lon = []
+    list_X   = [] 
+    list_Y   = []
+    
+    ## calculate time-delta from T0 and T1
+    T0 = datetime.strptime(T0, '%Y-%m-%d') #.strftime('%Y-%m-%d')
+    T1 = datetime.strptime(T1, '%Y-%m-%d') #.strftime('%Y-%m-%d') 
+    delta_days = (T1-T0).days 
+    
+    ## set date column from T0 - T1
+    dti = pd.date_range(T0, periods = delta_days+1, freq = 'D')
+    
+    collect_df['date'] = dti 
+    collect_df.set_index('date', inplace=True)
+
+
+    ## fill with observation and simulated values 
     for loc in locations:
-        
+
         ## get location specific observation dataframe 
         obs_loc = df_obs[df_obs['loc_id'] == loc]
         
-        ## extract observation timeseries and dates
-        ## add to unique column 
-        o_id = 'gauge_{}'.format(loc)
-        collect_df['date'] =            obs_loc['date'].values 
-        collect_df['obs_datetime'] =    obs_loc.index.values 
-        collect_df[o_id] =              obs_loc['value'].values 
-        
-        ## get subset of simulations of pixels
-        ## that potentially match with the gauge 
-        ## and id of iterations 
-        subset = df_sim[ df_sim['match_gauge']==loc]
-        n_iterations = subset['iter_id'].unique() 
-        
-        ## loop through iterations 
-        for n_iter in n_iterations:
-            sim_loc = subset[subset['iter_id']==n_iter]
+        if len(obs_loc) > 0:
+                    
+            ## extract observation timeseries and dates
+            ## add to unique column 
             
-            ## extract simulation timeseries 
-            ## and add as unique column to collect_df 
-            s_id = 'iter_{}_{}'.format(loc, n_iter)
-            collect_df[s_id] =           sim_loc[var].values  
-            collect_df['sim_datetime'] = sim_loc.index.values 
+            ## column name 
+            o_id = 'gauge_{}'.format(loc)
+            
+            ## extract date indices to place values in
+            ## appropriate places 
+            obs_loc_ix = pd.to_datetime(obs_loc.index)
+            
+            ## gauge observations 
+            collect_df.loc[obs_loc_ix, o_id] = obs_loc['value'].values 
     
-    collect_df.set_index('date', inplace=True)
-    return collect_df 
+            ## get subset of simulations of pixels
+            ## that potentially match with the gauge 
+            ## and id of iterations 
+            subset = df_sim[ df_sim['match_gauge']==loc]
+            n_iterations = subset['iter_id'].unique() 
+            
+            ## collect data for loc_df 
+            row_name.append(o_id) 
+            row_id.append(loc) 
+            list_lat.append( obs_loc['lat'].unique()[0] ) 
+            list_lon.append( obs_loc['lon'].unique()[0] ) 
+            list_X.append( obs_loc['x'].unique()[0] ) 
+            list_Y.append( obs_loc['y'].unique()[0] ) 
+                             
+            ## loop through iterations 
+            for n_iter in n_iterations:
+                
+                sim_loc = subset[subset['iter_id']==n_iter]
+                sim_loc_ix = pd.to_datetime(sim_loc.index) 
 
-def calc_features(df_obs, df_sim, locations, features = feature_options, time_window = ['all'], n_lag=[0,1], n_cross=[0],
-                  fdc_q = [1, 5, 10, 50, 90, 95, 99], mean_threshold = 0., var='dis24'):
+                ## extract simulation timeseries 
+                ## and add as unique column to collect_df 
+                s_id = 'iter_{}_{}'.format(loc, n_iter)
+                collect_df.loc[sim_loc_ix, s_id] = sim_loc[var].values  
+                
+                ## collect data for loc_df 
+                row_name.append(s_id) 
+                row_id.append(loc) 
+                list_lat.append( sim_loc['lat'].unique()[0] ) 
+                list_lon.append( sim_loc['lon'].unique()[0] ) 
+                list_X.append( sim_loc['x'].unique()[0] ) 
+                list_Y.append( sim_loc['y'].unique()[0] ) 
+    
+    
+    loc_df = pd.DataFrame({'name_id': row_name, 'gauge_id': row_id, 
+                           'lat': list_lat, 'lon': list_lon,
+                           'x': list_X, 'y': list_Y})
+    
+    return collect_df, loc_df 
+
+
+
+
+
+# def calc_features(df_obs, df_sim, locations, features = feature_options, time_window = ['all'], n_lag=[0,1], n_cross=[0],
+#                   fdc_q = [1, 5, 10, 50, 90, 95, 99], mean_threshold = 0., var='dis24', T_start = '1991-01-01', T_end = '2020-12-31'):
+def calc_features(collect_df, locations, features = feature_options, time_window = ['all'], n_lag=[0,1], n_cross=[0],
+                  fdc_q = [1, 5, 10, 50, 90, 95, 99], mean_threshold = 0., var='dis24', T_start = '1991-01-01', T_end = '2020-12-31'):
         
     assert any(feature in feature_options for feature in features), '[ERROR] not all features can be calculated' 
     assert any(tw in option_time_window for tw in time_window), '[ERROR] not all time windows can be calculated' 
     
     ## empty dataframe for signatures output 
     out_df = pd.DataFrame()
-    
-    ## reshape data to calculate signatures 
-    collect_df = reshape_data(df_obs, df_sim, locations, var=var)
+        
     idx = [col for col in collect_df.columns.values if not 'date' in col]
     idx_gauges = [col for col in idx if 'gauge' in col]
-    
+        
     ### ADD INITIAL ROWS 
     out_df['ID'] = idx 
     out_df.set_index('ID', inplace=True) 
     
-    ## add X/Y and lon/lat locations of gauge or model  
-    sim_idx = df_sim['match_gauge'].unique()
-    obs_idx = df_obs['loc_id'].unique()
-    
-    for i in range(len(idx)):
-        loc_id = idx[i] 
-            
-        ### select correct df for location extraction 
-        if 'gauge' in loc_id:
-
-            ## observational data 
-            ## in lat/lon format in [y,x] columns
-            loc = loc_id.split('_')[-1]
-            
-            if loc in obs_idx:
-                df_loc = df_obs[df_obs['loc_id']==loc]
-                                        
-        else:
-            ## simulated data 
-            ## can contain [x,y] but also [lon,lat] data 
-            loc = loc_id.split('_')[1]
-            iter_id = loc_id.split('_')[-1]
-            
-            ## select correct iteration 
-            if loc in sim_idx:                
-                df_loc = df_sim[ (df_sim['match_gauge']==loc) & (df_sim['iter_id'] == int(iter_id)) ]
+    for ix in idx_gauges: 
         
-        ## add corresponding data to out_df 
-        for coord_type in ['x', 'y', 'lon', 'lat']:
-                if coord_type in df_loc.columns:                
-                    out_df.loc[loc_id, coord_type] = df_loc[coord_type].unique()[0]
+        ## get gauge id 
+        gauge_id = ix.split('_')[-1]
+        
+        ## get subset of locations with matching id 
+        sub_locations = locations[ locations['gauge_id'] == gauge_id] 
+        
+        for sub_loc in sub_locations['name_id']:
+            
+            for coord_type in ['x', 'y', 'lon', 'lat']:
+                out_df.loc[sub_loc, coord_type] =  sub_locations[sub_locations['name_id'] == sub_loc][coord_type].values[0]
         
     ### FINISH PREP - start FEATURES                         
     ## organize features 
