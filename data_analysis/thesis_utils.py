@@ -205,7 +205,7 @@ def open_glofas(fn_list):
 
 def resample_gauge_data(df, column, target_dt='D'):
     ## make sure datetime index 
-    df.index = pd.to_datetime( df.index.values)
+    df.index = pd.to_datetime(df.index.values)
     
     ## resample 
     df[column] = df[column].resample(target_dt).mean()   
@@ -243,7 +243,7 @@ def read_gauge_data(fn_list, dtype = 'grdc', transform = False, src_proj = None,
                    'x', 'upArea', 'unit']
     
     out_df = pd.DataFrame(columns=output_cols)
-    df_len = 0 
+    # df_len = 0 
     
     assert dtype.lower() in dtypes, '[ERROR] datasource {} not found'.format(dtype)
     
@@ -380,8 +380,8 @@ def read_gauge_data(fn_list, dtype = 'grdc', transform = False, src_proj = None,
                 temp_df['quantity'] = 'Q'
                 temp_df['epsg'] = 4326
 
-                meta['start_date'] = str(dt_dates.iloc[0])
-                meta['end_date'] = str(dt_dates.iloc[-1])
+                # meta['start_date'] = str(dt_dates.iloc[0])
+                # meta['end_date'] = str(dt_dates.iloc[-1])
 
             ## set nan values 
             temp_df.loc[ temp_df['value'] == meta['nan'], 'value' ] = np.nan        
