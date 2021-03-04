@@ -85,7 +85,8 @@ def open_grib(fn):
 def open_efas(fn, dT='24'):
     
     if type(fn) is list:
-        fn = fn[0]
+        ds_out = xr.open_mfdataset(fn) 
+        return ds_out 
         
     delta_t = ['06', '24']
     
