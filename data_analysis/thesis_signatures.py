@@ -93,7 +93,12 @@ def calc_distr_normal(ts):
     ## calculate goodness of fit 
     ## create an artificial dataset based on
     ## derived mu and sigma (rvs)
-    gof = calc_gof(ts, stats.norm.rvs(loc=mu, scale=sigma, size=len(ts)))
+    try:
+        gof = calc_gof(ts, stats.norm.rvs(loc=mu, scale=sigma, size=len(ts)))
+    except:
+        print(mu, sigma, len(ts)) 
+        print(ts)
+        gof = 0
     return [mu, sigma, gof]
 
 def calc_distr_log(ts, eps=1e-6):
@@ -161,7 +166,7 @@ def calc_auto_correlation(ts, lag=0):
     print(len(ts))
     ## drop remaining missing values 
     ts = ts.dropna() 
-    print(len(ts))
+    print(ts)
     
     if lag > 0:
         ts0 = ts[0:-lag]
@@ -461,13 +466,13 @@ def reshape_data(df_obs, df_sim, locations, var='dis24', T0 = '1991-01-01', T1 =
     T0 = datetime.strptime(T0, '%Y-%m-%d') #.strftime('%Y-%m-%d')
     T1 = datetime.strptime(T1, '%Y-%m-%d') #.strftime('%Y-%m-%d') 
     delta_days = (T1-T0).days 
-    
+        
     ## set date column from T0 - T1
     dti = pd.date_range(T0, periods = delta_days+1, freq = 'D')
     
     collect_df['date'] = dti 
     collect_df.set_index('date', inplace=True)
-
+    
 
     ## fill with observation and simulated values 
     for loc in locations:
@@ -508,8 +513,9 @@ def reshape_data(df_obs, df_sim, locations, var='dis24', T0 = '1991-01-01', T1 =
             for n_iter in n_iterations:
                 
                 sim_loc = subset[subset['iter_id']==n_iter]
-                sim_loc_ix = pd.to_datetime(sim_loc.index) 
-
+                
+                sim_loc_ix = pd.to_datetime(sim_loc['date']) #, format = '%Y-%m-%d') 
+                
                 ## extract simulation timeseries 
                 ## and add as unique column to collect_df 
                 s_id = 'iter_{}_{}'.format(loc, n_iter)
