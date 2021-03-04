@@ -458,14 +458,9 @@ def search_ds(ds, search_dict, return_df = False):
     
     return subset
 
-def iterative_pixel_search(ds, location, init_x, init_y, x_tol, y_tol, n_iter, cols, coords=['time'], locs=['x','y']):
-    
-    ## determine search ranges based on tol and iterations 
-    x_range = np.linspace( init_x-x_tol, init_x+x_tol, n_iter)
-    y_range = np.linspace(init_y-y_tol, init_y+y_tol, n_iter)
-        
-    
-    
+def iterative_pixel_search(ds, location, init_x, init_y, 
+                           cell_size_x, cell_size_y, buffer_size, cols, coords=['time'], locs=['x','y']):
+
         
     ## find center coordinates 
     center_search = ds.sel( {locs[0]: init_x,
@@ -475,8 +470,8 @@ def iterative_pixel_search(ds, location, init_x, init_y, x_tol, y_tol, n_iter, c
     cx = center_search.x.values 
     cy = center_search.y.values 
         
-    mask_x = ( ds[locs[0]] >= cx - (1.1*n_iter*x_tol) ) & ( ds[locs[0]] <= cx + (1.1*n_iter*x_tol) )
-    mask_y = ( ds[locs[1]] >= cy - (1.1*n_iter*y_tol) ) & ( ds[locs[1]] <= cy + (1.1*n_iter*y_tol) )
+    mask_x = ( ds[locs[0]] >= cx - (1.1*buffer_size*cell_size_x) ) & ( ds[locs[0]] <= cx + (1.1*buffer_size*cell_size_x) )
+    mask_y = ( ds[locs[1]] >= cy - (1.1*buffer_size*cell_size_y) ) & ( ds[locs[1]] <= cy + (1.1*buffer_size*cell_size_y) )
     
     buffer_ds = ds.where( mask_x & mask_y, drop=True)
     
@@ -486,7 +481,6 @@ def iterative_pixel_search(ds, location, init_x, init_y, x_tol, y_tol, n_iter, c
     buffer_df = buffer_ds[['dis06', 'latitude', 'longitude', 'upArea']].to_dataframe()  
     buffer_cols = buffer_df.columns 
 
-    
     out_df = pd.DataFrame()    
     n_iter = 0 
     for i in range(len(x_cells)):
@@ -505,7 +499,7 @@ def iterative_pixel_search(ds, location, init_x, init_y, x_tol, y_tol, n_iter, c
             for col in cols:
                 _df[col] = sub_df[col].values 
             
-            for col in ['x', 'y', 'latitude', 'longitude']:
+            for col in ['latitude', 'longitude']:
                 if col in buffer_cols:
                     _df[col] = sub_df[col].values
             
