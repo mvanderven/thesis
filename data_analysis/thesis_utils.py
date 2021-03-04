@@ -85,7 +85,7 @@ def open_grib(fn):
 def open_efas(fn, dT='24', do_resample_24h = False):
     
     if type(fn) is list:
-        ds_out = xr.open_mfdataset(fn, chunks={"time": 30})#, 
+        ds_out = xr.open_mfdataset(fn, chunks={"time": 100})#, 
                                                 # 'x': 100,
                                                 # 'y': 100}) 
         
@@ -93,10 +93,9 @@ def open_efas(fn, dT='24', do_resample_24h = False):
             ds_out = ds_out.resample(time="1D").mean() 
         
         ## rename some variables 
-        ds_out = ds_out.rename(name_dict={'latitude': 'lat',
-                                 'longitude': 'lon',
-                                 'dis06': 'dis24'})
-        
+        ds_out = ds_out.rename(name_dict={  'latitude': 'lat',
+                                            'longitude': 'lon',
+                                            'dis06': 'dis24'})
         return ds_out 
         
     delta_t = ['06', '24']
@@ -440,7 +439,6 @@ def search_ds(ds, search_dict, return_df = False):
             tolerance = search_dict[key]['tolerance']
         
         query = search_dict[key]['query']
-        print(query)
         subset = ds.sel(query, method=method, tolerance = tolerance)
     
     ## create output dataframe instead of xarray dataset 
@@ -465,9 +463,9 @@ def search_ds(ds, search_dict, return_df = False):
     return subset
 
 def iterative_pixel_search(ds, location, init_x, init_y, 
-                           cell_size_x, cell_size_y, buffer_size, cols, coords=['time'], locs=['x','y']):
-
-        
+                           cell_size_x, cell_size_y, buffer_size, 
+                           cols, coords=['time'], locs=['x','y']):
+    
     ## find center coordinates 
     center_search = ds.sel( {locs[0]: init_x,
                            locs[1]: init_y},
@@ -489,7 +487,7 @@ def iterative_pixel_search(ds, location, init_x, init_y,
     y_cells = buffer_ds[locs[1]].values 
     
     ## convert xarray dataset to dataframe 
-    buffer_df = buffer_ds[['dis06', 'latitude', 'longitude', 'upArea']].to_dataframe()  
+    buffer_df = buffer_ds.to_dataframe()  
     buffer_cols = buffer_df.columns 
     
     ## create empty output dataframe 
@@ -516,7 +514,7 @@ def iterative_pixel_search(ds, location, init_x, init_y,
                 _df[col] = sub_df[col].values 
             
             ## get coordinates 
-            for col in ['latitude', 'longitude']:
+            for col in ['lat', 'lon']:
                 if col in buffer_cols:
                     _df[col] = sub_df[col].values
             
