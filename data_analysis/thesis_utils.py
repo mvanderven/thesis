@@ -85,7 +85,9 @@ def open_grib(fn):
 def open_efas(fn, dT='24', do_resample_24h = False):
     
     if type(fn) is list:
-        ds_out = xr.open_mfdataset(fn) 
+        ds_out = xr.open_mfdataset(fn, chunks={"time": 30})#, 
+                                                # 'x': 100,
+                                                # 'y': 100}) 
         
         if do_resample_24h:
             ds_out = ds_out.resample(time="1D").mean()       
@@ -409,6 +411,12 @@ def search_ds(ds, search_dict, return_df = False):
     ## get search keys 
     keys = list(search_dict.keys())
     
+    ## variables of interest 
+    voi = ['dis24', 'dis06', 'upArea', 'lat', 'latitude', 'lon', 'longitude']
+    
+    ## coordinates of interest 
+    coi = ['x', 'y']
+      
     ## loop through queries 
     for key in keys:
         sub_keys = search_dict[key].keys() 
@@ -426,6 +434,7 @@ def search_ds(ds, search_dict, return_df = False):
             tolerance = search_dict[key]['tolerance']
         
         query = search_dict[key]['query']
+        print(query)
         subset = ds.sel(query, method=method, tolerance = tolerance)
     
     ## create output dataframe instead of xarray dataset 
@@ -433,18 +442,18 @@ def search_ds(ds, search_dict, return_df = False):
         ix = subset.time.values
         
         out_df = pd.DataFrame(index=ix)
-        
+
         data_vars = list( subset.data_vars )
         # coord_vars = list(subset.coords)
-
-        for var in data_vars:        
-            out_df[var] = subset[var].data    
-                    
+        
+        for var in data_vars: 
+            if var in voi:
+                out_df[var] = subset[var].data 
+                
         coord_vars = subset.coords.keys() 
         for coord in coord_vars:
-            if not 'time' in coord:
-                out_df[coord] = subset[coord].values 
-                        
+            if coord in coi:
+                out_df[coord] = subset[coord].values                
         return out_df
     
     return subset
@@ -454,42 +463,61 @@ def iterative_pixel_search(ds, location, init_x, init_y, x_tol, y_tol, n_iter, c
     ## determine search ranges based on tol and iterations 
     x_range = np.linspace( init_x-x_tol, init_x+x_tol, n_iter)
     y_range = np.linspace(init_y-y_tol, init_y+y_tol, n_iter)
-    
-    n_iter= 0 
-    
-    out_df = pd.DataFrame() 
-    
-    ## perform n_iter**2 iterations to get each pixel 
-    for i in range(len(x_range)):
-        x_iter = x_range[i]
         
-        for j in range(len(y_range)):
-            y_iter = y_range[j]
+    
+    
+        
+    ## find center coordinates 
+    center_search = ds.sel( {locs[0]: init_x,
+                           locs[1]: init_y},
+                         method = 'nearest')
+    
+    cx = center_search.x.values 
+    cy = center_search.y.values 
+        
+    mask_x = ( ds[locs[0]] >= cx - (1.1*n_iter*x_tol) ) & ( ds[locs[0]] <= cx + (1.1*n_iter*x_tol) )
+    mask_y = ( ds[locs[1]] >= cy - (1.1*n_iter*y_tol) ) & ( ds[locs[1]] <= cy + (1.1*n_iter*y_tol) )
+    
+    buffer_ds = ds.where( mask_x & mask_y, drop=True)
+    
+    x_cells = buffer_ds[locs[0]].values 
+    y_cells = buffer_ds[locs[1]].values 
+    
+    buffer_df = buffer_ds[['dis06', 'latitude', 'longitude', 'upArea']].to_dataframe()  
+    buffer_cols = buffer_df.columns 
+
+    
+    out_df = pd.DataFrame()    
+    n_iter = 0 
+    for i in range(len(x_cells)):
+           
+        for j in range(len(y_cells)):
             
-            ## set up search query 
-            location_search = {
-                'loc': {
-                    'query': {
-                        locs[0]: x_iter,
-                        locs[1]: y_iter
-                                },
-                    'method': 'nearest'
-                        }}
+            ## search results 
+            sub_df = buffer_df.loc[ :, x_cells[i], y_cells[j]  ]
             
-            ## execute search 
-            search_result = search_ds(ds, location_search, return_df = True)
+            ## create empty dataframe 
+            _df = pd.DataFrame()
             
-            ## save search result in dataframe 
-            search_result['match_gauge'] = location 
+            sub_ix = sub_df.index    
+            _df['date'] = sub_ix 
+                    
+            for col in cols:
+                _df[col] = sub_df[col].values 
             
-            ## add iteration_id 
-            search_result['iter_id'] = n_iter 
+            for col in ['x', 'y', 'latitude', 'longitude']:
+                if col in buffer_cols:
+                    _df[col] = sub_df[col].values
+            
+            _df['match_gauge'] = location 
+            _df['iter_id'] = n_iter 
+            _df['x'] = x_cells[i] 
+            _df['y'] = y_cells[j]
             n_iter += 1 
             
-            out_df = out_df.append(search_result)
-    
+            out_df = out_df.append(_df)
     return out_df 
-    # return search_result 
+            
             
 
 
