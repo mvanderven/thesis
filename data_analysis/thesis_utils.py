@@ -90,7 +90,13 @@ def open_efas(fn, dT='24', do_resample_24h = False):
                                                 # 'y': 100}) 
         
         if do_resample_24h:
-            ds_out = ds_out.resample(time="1D").mean()       
+            ds_out = ds_out.resample(time="1D").mean() 
+        
+        ## rename some variables 
+        ds_out = ds_out.rename(name_dict={'latitude': 'lat',
+                                 'longitude': 'lon',
+                                 'dis06': 'dis24'})
+        
         return ds_out 
         
     delta_t = ['06', '24']
@@ -467,24 +473,32 @@ def iterative_pixel_search(ds, location, init_x, init_y,
                            locs[1]: init_y},
                          method = 'nearest')
     
+    ## extract center coordiantes 
     cx = center_search.x.values 
     cy = center_search.y.values 
-        
+    
+    ## create buffer area 
     mask_x = ( ds[locs[0]] >= cx - (1.1*buffer_size*cell_size_x) ) & ( ds[locs[0]] <= cx + (1.1*buffer_size*cell_size_x) )
     mask_y = ( ds[locs[1]] >= cy - (1.1*buffer_size*cell_size_y) ) & ( ds[locs[1]] <= cy + (1.1*buffer_size*cell_size_y) )
     
+    ## extract buffer 
     buffer_ds = ds.where( mask_x & mask_y, drop=True)
     
+    ## get coordinates 
     x_cells = buffer_ds[locs[0]].values 
     y_cells = buffer_ds[locs[1]].values 
     
+    ## convert xarray dataset to dataframe 
     buffer_df = buffer_ds[['dis06', 'latitude', 'longitude', 'upArea']].to_dataframe()  
     buffer_cols = buffer_df.columns 
-
+    
+    ## create empty output dataframe 
     out_df = pd.DataFrame()    
+    ## set iteration counter to 0 
     n_iter = 0 
+    
+    ## start looping through all cells in buffer 
     for i in range(len(x_cells)):
-           
         for j in range(len(y_cells)):
             
             ## search results 
@@ -493,22 +507,27 @@ def iterative_pixel_search(ds, location, init_x, init_y,
             ## create empty dataframe 
             _df = pd.DataFrame()
             
+            ## dates 
             sub_ix = sub_df.index    
             _df['date'] = sub_ix 
-                    
+             
+            ## get timeseries values 
             for col in cols:
                 _df[col] = sub_df[col].values 
             
+            ## get coordinates 
             for col in ['latitude', 'longitude']:
                 if col in buffer_cols:
                     _df[col] = sub_df[col].values
             
+            ## set other metadata 
             _df['match_gauge'] = location 
             _df['iter_id'] = n_iter 
             _df['x'] = x_cells[i] 
             _df['y'] = y_cells[j]
             n_iter += 1 
             
+            ## append dataframe to output dataframe 
             out_df = out_df.append(_df)
     return out_df 
             
