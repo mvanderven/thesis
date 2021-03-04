@@ -82,10 +82,13 @@ def open_grib(fn):
     
     return ds 
 
-def open_efas(fn, dT='24'):
+def open_efas(fn, dT='24', do_resample_24h = False):
     
     if type(fn) is list:
         ds_out = xr.open_mfdataset(fn) 
+        
+        if do_resample_24h:
+            ds_out = ds_out.resample(time="1D").mean()       
         return ds_out 
         
     delta_t = ['06', '24']
