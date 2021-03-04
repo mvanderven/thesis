@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 # import cartopy 
 import time 
 from tqdm import tqdm 
+import warnings 
 
 ## import own functions  --> check bar in top right hand to directory of files
 import thesis_utils as utils 
@@ -138,14 +139,10 @@ buffer_size = 1
 cell_size_efas = 5000       # m2 
 cell_size_glofas = 0.1      # degrees lat/lon
 
-
-## buffer size = 2 --> returns 25 pixels --> 2 ring buffer 
-# n_iter = 5
-# cell_size_efas = 5000 * n_iter * 0.4
-# cell_size_glofas = 5000 * n_iter * 0.4 
-
-# collect_glofas = pd.DataFrame() 
 collect_efas = pd.DataFrame()
+
+## ignore warnings that come with loading 
+warnings.filterwarnings('ignore')
 
 for i in tqdm(range(len(gauge_locs))):
     loc= gauge_locs[i]
@@ -158,13 +155,15 @@ for i in tqdm(range(len(gauge_locs))):
                                                     cell_size_x = cell_size_efas,
                                                     cell_size_y = cell_size_efas,
                                                     buffer_size = buffer_size,
-                                                    cols = ['dis06', 'upArea'],
+                                                    cols = ['dis24', 'upArea'],
                                                     coords = ['time']) 
     
     collect_efas = collect_efas.append(efas_buffer)
     
 print('Buffer search done \n')
 
+fn_save_step = model_data / 'save_buffer_search.csv'
+collect_efas.to_csv(fn_save_step)
 
 ## release glofas and efas xarray from memory (large memory)
 # ds_efas = None
@@ -177,12 +176,12 @@ print('Buffer search done \n')
 collect_timeseries, collect_locations = thesis_signatures.reshape_data(gauge_time, 
                                                                        collect_efas,
                                                                        gauge_locs, 
-                                                                       var='dis06',
+                                                                       var='dis24',
                                                                        T1 = end_date)
 
 #%% Show collected data
 
-print(collect_timeseries.head())
+print(collect_timeseries)
 
 ## TO DO -- set a limited minimum of required data points for gauge observations 
 ## if gauge observations do not meet this limit 
@@ -192,11 +191,11 @@ print(collect_timeseries.head())
 
 ### SIGNATURES 
 calc_features = [
-                    # 'normal', 
+                    'normal', 
                     # 'log', 
                     # 'gev', 
                     # 'gamma', 
-                    'n-acorr',          ## fix nan-issues - remaining length after nan removal too small
+                    # 'n-acorr',          ## fix nan-issues - remaining length after nan removal too small
                     # 'n-ccorr',                        ## fix nan-issues 
                     # 'fdc-q', 'fdc-slope', 'lf-ratio',
                     # 'bf-index', 
