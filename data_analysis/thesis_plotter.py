@@ -13,6 +13,7 @@ import numpy as np
 
 import thesis_utils as utils 
 
+import seaborn as sns 
 
 marker_styles = ['.', 'o', 'v', '^', '<', '>', '8', 's', 'p', '*', 'h',
                  'H', 'X', 'D', 'd', 'P', 4, 5, 6, 7, 8, 9, 10, 11]
@@ -209,6 +210,28 @@ def dashboard(ds, df, gauge_data, locations, thresh_min = 500, coords=['x', 'y']
     plt.tight_layout()
     return 
 
+
+
+def display_cross_correlation(df, cols = df.columns, 
+                              vmin = -1., vmax = -1., center = 0.,
+                              cmap = sns.divering_palette(20,220, n=200) ):
+    
+    
+    calc_corr = df[cols].corr() 
+    
+    ax = sns.heatmap( 
+        calc_corr,
+        vmin = vmin, vmax = vmax, center = center,
+        cmap = cmap,
+        square = True
+        )
+    
+    ax.set_xticklabels(
+        ax.get_xticklabels(),
+        rotation = 45,
+        horizontalalignment='right')
+            
+    return 
 
 
 
