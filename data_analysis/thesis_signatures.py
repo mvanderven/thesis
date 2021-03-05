@@ -473,7 +473,6 @@ def reshape_data(df_obs, df_sim, locations, var='dis24', T0 = '1991-01-01', T1 =
     collect_df['date'] = dti 
     collect_df.set_index('date', inplace=True)
     
-
     ## fill with observation and simulated values 
     for loc in locations:
 
@@ -498,7 +497,7 @@ def reshape_data(df_obs, df_sim, locations, var='dis24', T0 = '1991-01-01', T1 =
             ## get subset of simulations of pixels
             ## that potentially match with the gauge 
             ## and id of iterations 
-            subset = df_sim[ df_sim['match_gauge']==loc]
+            subset = df_sim[ df_sim['match_gauge'] == loc]
             n_iterations = subset['iter_id'].unique() 
             
             ## collect data for loc_df 
