@@ -216,14 +216,15 @@ def display_cross_correlation(df, cols,
                               vmin = -1., vmax = -1., center = 0.,
                               cmap = sns.diverging_palette(20,220, n=200) ):
     
-    
     calc_corr = df[cols].corr() 
     
     ax = sns.heatmap( 
         calc_corr,
         vmin = vmin, vmax = vmax, center = center,
         cmap = cmap,
-        square = True
+        square = True,
+        annot = True,
+        fmt = '.1g'
         )
     
     ax.set_xticklabels(
