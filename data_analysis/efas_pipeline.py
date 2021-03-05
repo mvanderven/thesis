@@ -191,14 +191,15 @@ if not load_buffer_results:
 
 if load_buffer_results: 
     fn_save_step = model_data / 'save_buffer_search.csv'
-    collect_efas = pd.read_csv(fn_save_step, index_col=0)
-
+    collect_efas = pd.read_csv(fn_save_step, index_col=0).astype({'match_gauge':'str'})
 
 #%% 
 
 ## release glofas and efas xarray from memory (large memory)
 # ds_efas = None
- 
+
+print(collect_efas.head())
+
 #%% Collect model and gauge time series 
 
 ## combine efas and gauge time series to
@@ -231,14 +232,9 @@ for col in missing_cols:
                                                                            n_remaining) )
     
     if p_missing > min_percentage:
-        print('Missing percentage is too large - remove from analysis')
+        print('\tMissing percentage is too large - remove from analysis')
         collect_timeseries = collect_timeseries.drop(columns=[col], axis=1) 
     
-
-## TO DO -- set a limited minimum of required data points for gauge observations 
-## if gauge observations do not meet this limit 
-## exclude gauge + simulations from the analysis 
-
 #%% Signature calculation 
 
 ### SIGNATURES 
