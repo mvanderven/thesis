@@ -122,48 +122,79 @@ for gauge in gauge_locs:
     if gauge not in updated_gauge_locs:
         print('[INFO] gauge {} dropped - no data in period of interest'.format(gauge))
         gauges_dropped += 1 
-
+        
 print('[INFO] {} gauges dropped - {} remaining\n'.format(gauges_dropped, len(updated_gauge_locs)))
+
+## update list with gauge locations 
+gauge_locs = updated_gauge_locs 
 
 ## release total gauge memory (?)
 # gauge_data_grdc = None 
 
+
+#%% 
+
+load_buffer_results = True
+
 #%% Buffer analysis in model data 
 
-print('Start buffer search')
-## set up location search query 
-## refine buffer analysis ? 
-
-## buffer size = 1 --> returns 9 pixels --> 1 ring buffer 
-buffer_size = 1
-cell_size_efas = 5000       # m2 
-cell_size_glofas = 0.1      # degrees lat/lon
-
-collect_efas = pd.DataFrame()
-
-## ignore warnings that come with loading 
-warnings.filterwarnings('ignore')
-
-for i in tqdm(range(len(gauge_locs))):
-    loc= gauge_locs[i]
-
-    ## efas buffer search
-    efas_buffer = utils.iterative_pixel_search(     efas_time,
-                                                    loc,
-                                                    init_x = coords_3035[i][0],
-                                                    init_y = coords_3035[i][1],
-                                                    cell_size_x = cell_size_efas,
-                                                    cell_size_y = cell_size_efas,
-                                                    buffer_size = buffer_size,
-                                                    cols = ['dis24', 'upArea'],
-                                                    coords = ['time']) 
+if not load_buffer_results:
     
-    collect_efas = collect_efas.append(efas_buffer)
+    print('Start buffer search\n')
     
-print('Buffer search done \n')
+    buffer_size = 1
+    cell_size_efas = 5000       # m2 
+    cell_size_glofas = 0.1      # degrees lat/lon
+    
+    
+    
+    ## TEST 
+    collect_efas, fn_save_results = utils.buffer_search(
+                                       efas_time, gauge_locs,
+                                       coords_3035[:,0], coords_3035[:,1],
+                                       cell_size_efas, cell_size_efas, buffer_size,
+                                       save_csv=True, save_dir = model_data)
+    
+    
+    
+    # def buffer_search(ds, gauge_locations, X0, Y0, cell_size_X, cell_size_Y,
+    #                   buffer_size, cols = ['dis24', 'upArea'], coords=['time']):
+    
+    # collect_efas = pd.DataFrame()
+    
+    ## ignore warning that come with loading 
+    ## data into dataframe 
+    # warnings.filterwarnings('ignore')
+    
+    # for i in tqdm(range(len(gauge_locs))):
+        # loc= gauge_locs[i]
+    
+        # ## efas buffer search
+        # efas_buffer = utils.iterative_pixel_search(     efas_time,
+        #                                                 loc,
+        #                                                 init_x = coords_3035[i][0],
+        #                                                 init_y = coords_3035[i][1],
+        #                                                 cell_size_x = cell_size_efas,
+        #                                                 cell_size_y = cell_size_efas,
+        #                                                 buffer_size = buffer_size,
+        #                                                 cols = ['dis24', 'upArea'],
+        #                                                 coords = ['time']) 
+        
+        # collect_efas = collect_efas.append(efas_buffer)
+        
+    ## reset display of warning messages
+    # warnings.filterwarnings('default')
+    
+    print('Buffer search done \n')
 
-fn_save_step = model_data / 'save_buffer_search.csv'
-collect_efas.to_csv(fn_save_step)
+#%% 
+
+if load_buffer_results: 
+    fn_save_step = model_data / 'save_buffer_search.csv'
+    collect_efas = pd.read_csv(fn_save_step, index_col=0)
+
+
+#%% 
 
 ## release glofas and efas xarray from memory (large memory)
 # ds_efas = None
@@ -181,7 +212,28 @@ collect_timeseries, collect_locations = thesis_signatures.reshape_data(gauge_tim
 
 #%% Show collected data
 
-print(collect_timeseries)
+print(collect_timeseries.head())
+
+#%% Check for missing values in model simulation data 
+missing_cols = collect_timeseries.columns[ collect_timeseries.isnull().any()].tolist() 
+
+## minimum percentage of availabel data over period of interest 
+min_percentage = 10. 
+
+for col in missing_cols:
+    n_missing = collect_timeseries[col].isnull().sum() 
+    
+    p_missing = (n_missing/len(collect_timeseries))*100
+    n_remaining = len(collect_timeseries)-n_missing
+    print('{} missing {} values -- {:.2f} % of total, {} remaining'.format(col,
+                                                                           n_missing,
+                                                                           p_missing,
+                                                                           n_remaining) )
+    
+    if p_missing > min_percentage:
+        print('Missing percentage is too large - remove from analysis')
+        collect_timeseries = collect_timeseries.drop(columns=[col], axis=1) 
+    
 
 ## TO DO -- set a limited minimum of required data points for gauge observations 
 ## if gauge observations do not meet this limit 

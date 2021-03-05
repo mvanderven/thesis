@@ -10,7 +10,8 @@ import xarray as xr
 import numpy as np 
 import pandas as pd 
 import pyproj 
-
+from tqdm import tqdm
+import warnings
 
 def reproject_coordinates(src_coords, src_epsg, dst_epsg=int(4326)):
     
@@ -466,6 +467,8 @@ def iterative_pixel_search(ds, location, init_x, init_y,
                            cell_size_x, cell_size_y, buffer_size, 
                            cols, coords=['time'], locs=['x','y']):
     
+
+    
     ## find center coordinates 
     center_search = ds.sel( {locs[0]: init_x,
                            locs[1]: init_y},
@@ -511,8 +514,8 @@ def iterative_pixel_search(ds, location, init_x, init_y,
              
             ## get timeseries values 
             for col in cols:
-                _df[col] = sub_df[col].values 
-            
+                _df[col] = sub_df[col].values  
+
             ## get coordinates 
             for col in ['lat', 'lon']:
                 if col in buffer_cols:
@@ -528,7 +531,50 @@ def iterative_pixel_search(ds, location, init_x, init_y,
             ## append dataframe to output dataframe 
             out_df = out_df.append(_df)
     return out_df 
-            
+
+
+def buffer_search(ds, gauge_locations, X0, Y0, cell_size_X, cell_size_Y,
+                  buffer_size, cols = ['dis24', 'upArea'], coords=['time'],
+                  save_csv = False, save_dir = None):
+    
+    out_df = pd.DataFrame() 
+    
+    ## ignore warning that come with loading 
+    ## data into dataframe 
+    warnings.filterwarnings('ignore')
+    
+    ## start loop trough gauge locations 
+    for i in tqdm(range(len(gauge_locations))):
+        loc= gauge_locations[i]
+    
+        ##buffer search
+        df_buffer = iterative_pixel_search(     ds,
+                                                loc,
+                                                init_x = X0[i],
+                                                init_y = Y0[i],
+                                                cell_size_x = cell_size_X,
+                                                cell_size_y = cell_size_Y,
+                                                buffer_size = buffer_size,
+                                                cols = cols,
+                                                coords = coords) 
+        
+        out_df = out_df.append(df_buffer)
+    
+    ## check for cols with NaN values - remove 
+    
+    
+    ## reset display of warning messages
+    warnings.filterwarnings('default')
+    
+    ## save results? 
+    if save_csv:
+        fn_out = 'buffer_search_{}.csv'.format( pd.datetime.today().strftime('%Y%m%d') )
+        if save_dir is not None:
+            fn_out = Path(save_dir) / fn_out 
+        pd.to_csv(fn_out, index=False)
+        return out_df, fn_out
+    
+    return out_df 
             
 
 
