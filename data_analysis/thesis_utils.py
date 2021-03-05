@@ -559,9 +559,7 @@ def buffer_search(ds, gauge_locations, X0, Y0, cell_size_X, cell_size_Y,
                                                 coords = coords) 
         
         out_df = out_df.append(df_buffer)
-    
-    ## check for cols with NaN values - remove 
-    
+ 
     
     ## reset display of warning messages
     warnings.filterwarnings('default')
@@ -571,7 +569,7 @@ def buffer_search(ds, gauge_locations, X0, Y0, cell_size_X, cell_size_Y,
         fn_out = 'buffer_search_{}.csv'.format( pd.datetime.today().strftime('%Y%m%d') )
         if save_dir is not None:
             fn_out = Path(save_dir) / fn_out 
-        pd.to_csv(fn_out, index=False)
+        out_df.to_csv(fn_out, index=False)
         return out_df, fn_out
     
     return out_df 
