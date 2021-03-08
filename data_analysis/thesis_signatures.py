@@ -172,20 +172,17 @@ def calc_auto_correlation(ts, lag=0):
     # # return stats.pearsonr(ts0,ts1)[0]
     return ts.corr(ts.shift(lag))
 
-def calc_cross_correlation(ts0, ts1, lag=0):
-    
-    ## drop remaining missing values 
-    # ts = ts.dropna() 
-    # ts = ts.dropna()
-    
-    if lag > 0:
-        ts0 = ts0[0:-lag]
-        ts1 = ts1[lag:] 
-    if lag == 0:
-        ts0 = ts0 
-        ts1 = ts1 
-    # if lag < 0:
-    return stats.pearsonr(ts0, ts1)[0]
+def calc_cross_correlation(ts0, ts1, lag=0):   
+        
+    # if lag > 0:
+    #     ts0 = ts0[0:-lag]
+    #     ts1 = ts1[lag:] 
+    # if lag == 0:
+    #     ts0 = ts0 
+    #     ts1 = ts1 
+    # # if lag < 0:
+    # return stats.pearsonr(ts0, ts1)[0]
+    return ts0.corr(ts1.shift(lag))
 
 ########## FDC ##########
 
@@ -531,11 +528,6 @@ def reshape_data(df_obs, df_sim, locations, var='dis24', T0 = '1991-01-01', T1 =
     return collect_df, loc_df 
 
 
-
-
-
-# def calc_features(df_obs, df_sim, locations, features = feature_options, time_window = ['all'], n_lag=[0,1], n_cross=[0],
-#                   fdc_q = [1, 5, 10, 50, 90, 95, 99], mean_threshold = 0., var='dis24', T_start = '1991-01-01', T_end = '2020-12-31'):
 def calc_features(collect_df, locations, features = feature_options, time_window = ['all'], n_lag=[0,1], n_cross=[0],
                   fdc_q = [1, 5, 10, 50, 90, 95, 99], mean_threshold = 0., var='dis24', T_start = '1991-01-01', T_end = '2020-12-31'):
         
@@ -571,7 +563,9 @@ def calc_features(collect_df, locations, features = feature_options, time_window
     corr_features =  [feat for feat in features if feat in corr_options]
     fdc_features =   [feat for feat in features if feat in fdc_options]
     hydro_features = [feat for feat in features if feat in hydro_options]
-
+    
+    print(out_df.head())
+    
     for tw in time_window:
         
         ### slice or resample all columns 
@@ -618,40 +612,34 @@ def calc_features(collect_df, locations, features = feature_options, time_window
                 return_cols = func_dict[feature]['cols'][0]
                                 
                 for k in range(len(n_cross)):
-                    ## create empty array 
-                    results = []
+                                
+                    return_col_name = return_cols.format(n_cross[k], tw)
                     
                     ## loop through individual gauges 
                     for i in range(len(idx_gauges)):
                             
                         ## extract gauge column - to calculate
-                        ## cross-correlation wtih 
-                        gauge_col = calc_df[idx_gauges[i]].values 
+                        ## cross-correlation with  
+                        gauge_col = idx_gauges[i]
                         
                         ## find matching gauges 
-                        gauge = idx_gauges[i].split('_')[-1]
-                        gauge_matches = [col for col in idx if 'iter_{}'.format(gauge) in col] 
+                        gauge_id = idx_gauges[i].split('_')[-1]
+                        gauge_matches = [col for col in idx if 'iter_{}'.format(gauge_id) in col] 
                         
+                        ## create a list with all 
+                        calc_gauges = [gauge_col] + gauge_matches 
+                                                
                         ## check if lag time smaller than total timeseries time 
                         if n_cross[k] < len(calc_df):
                             
-                            ## calculate lagged autocorrelation 
-                            gauge_lag_autocorr = func_dict[feature]['func'](gauge_col, gauge_col, lag=n_cross[k])
-                            results.append(gauge_lag_autocorr)
+                            for gauge_i in calc_gauges: 
+                                ## compute (lagged) cross correlation 
+                                ## with gauge and loop over total list (includes (lagged) auto-correlation for specific gauge)
+                                cross_corr = func_dict[feature]['func'](calc_df[gauge_col], calc_df[gauge_i], lag=n_cross[k] ) 
+                                
+                                ## add result to dataframe
+                                out_df.loc[gauge_i, return_col_name] = cross_corr 
                             
-                            ## loop through potential matches 
-                            for j in range(len(gauge_matches)):
-                                
-                                ## get potential mtch 
-                                match_col = calc_df[gauge_matches[j]]
-                                
-                                ## calculate lagged cross correlation 
-                                lag_cross_corr = func_dict[feature]['func'](gauge_col, match_col, lag=n_cross[k])
-                                results.append(lag_cross_corr)
-                    
-                    ## collect results in output dataframe 
-                    out_df[ return_cols.format(n_cross[k], tw)] = results 
-        
         for feature in fdc_features:
             
             if 'fdc-q' in feature:
