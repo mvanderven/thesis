@@ -213,10 +213,12 @@ def dashboard(ds, df, gauge_data, locations, thresh_min = 500, coords=['x', 'y']
 
 
 def display_cross_correlation(df, cols, 
-                              vmin = -1., vmax = -1., center = 0.,
-                              cmap = sns.diverging_palette(20,220, n=200) ):
+                              vmin = -1., vmax = 1., center = 0.,
+                              cmap = sns.diverging_palette(220, 20, n=100) ):
     
     calc_corr = df[cols].corr() 
+    
+    fig, ax = plt.subplots(figsize=(10,10))
     
     ax = sns.heatmap( 
         calc_corr,
