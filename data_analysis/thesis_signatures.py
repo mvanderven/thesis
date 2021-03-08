@@ -162,20 +162,15 @@ def calc_distr_poisson(ts):
 ###### CORRELATION ######
 
 def calc_auto_correlation(ts, lag=0):
-    
-    print(len(ts))
-    ## drop remaining missing values 
-    ts = ts.dropna() 
-    print(ts)
-    
-    if lag > 0:
-        ts0 = ts[0:-lag]
-        ts1 = ts[lag:]
-    if lag ==0:
-        ts0 = ts
-        ts1 = ts        
-    # if lag < 0: 
-    return stats.pearsonr(ts0,ts1)[0]
+        
+    # if lag > 0:
+    #     ts0 = ts[0:-lag]
+    #     ts1 = ts[lag:]
+    # if lag ==0:
+    #     ts0 = ts
+    #     ts1 = ts        
+    # # return stats.pearsonr(ts0,ts1)[0]
+    return ts.corr(ts.shift(lag))
 
 def calc_cross_correlation(ts0, ts1, lag=0):
     
@@ -598,7 +593,7 @@ def calc_features(collect_df, locations, features = feature_options, time_window
         
         ### calculate CORRELATION features 
         for feature in corr_features:
-            
+            print(feature)
             ## n-lag autocorrelation 
             if 'n-acorr' in feature:
                 
@@ -607,7 +602,7 @@ def calc_features(collect_df, locations, features = feature_options, time_window
                 
                 ## loop through given lag times 
                 for i in range(len(n_lag)):
-                    
+                    print(n_lag[i])
                     ## check if lag time smaller than total timeseries time 
                     if n_lag[i] < len(calc_df):
                         
