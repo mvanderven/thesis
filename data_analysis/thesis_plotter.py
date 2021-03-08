@@ -218,7 +218,7 @@ def display_cross_correlation(df, cols,
     
     calc_corr = df[cols].corr() 
     
-    fig, ax = plt.subplots(figsize=(10,10))
+    fig, ax = plt.subplots(figsize=(14,9))
     
     ax = sns.heatmap( 
         calc_corr,
@@ -226,12 +226,14 @@ def display_cross_correlation(df, cols,
         cmap = cmap,
         square = True,
         annot = True,
-        fmt = '.1g'
+        annot_kws={"size":4},
+        fmt = '.1g',
+        cbar=False
         )
     
     ax.set_xticklabels(
         ax.get_xticklabels(),
-        rotation = 45,
+        rotation = 60,
         horizontalalignment='right')
             
     return 
