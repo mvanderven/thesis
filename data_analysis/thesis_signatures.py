@@ -192,7 +192,6 @@ def calc_FDC(ts):
     ts_drop = ts.dropna() 
     
     ## sort values from small to large 
-    # ts_sorted = ts.sort_values()
     ts_sorted = ts_drop.sort_values()
     
     ## calculate ranks of data 
@@ -280,11 +279,16 @@ def calc_i_bf(ts):
     
     
     ## Calculate baseflow according to:
-    ## from: https://raw.githubusercontent.com/TonyLadson/BaseflowSeparation_LyneHollick/master/BFI.R
+    ## https://raw.githubusercontent.com/TonyLadson/BaseflowSeparation_LyneHollick/master/BFI.R
     
     alpha = 0.925  
     
-    Q = ts.values
+    if ts.isnull().any():
+        ## fill with values between 
+        ## otherwise drop 
+        ts = ts.fillna(method='ffill').dropna()
+    
+    Q = ts.values 
     
     Q_quick = np.zeros(len(ts)) 
     Q_quick[0] = ts[0]
