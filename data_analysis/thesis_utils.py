@@ -13,6 +13,8 @@ import pyproj
 from tqdm import tqdm
 import warnings
 
+import matplotlib.pyplot as plt 
+
 def reproject_coordinates(src_coords, src_epsg, dst_epsg=int(4326)):
     
     '''
@@ -476,7 +478,7 @@ def iterative_pixel_search(ds, location, init_x, init_y,
     
     ## extract center coordiantes 
     cx = center_search.x.values 
-    cy = center_search.y.values 
+    cy = center_search.y.values   
     
     ## create buffer area 
     mask_x = ( ds[locs[0]] >= cx - (1.1*buffer_size*cell_size_x) ) & ( ds[locs[0]] <= cx + (1.1*buffer_size*cell_size_x) )
@@ -488,7 +490,7 @@ def iterative_pixel_search(ds, location, init_x, init_y,
     ## get coordinates 
     x_cells = buffer_ds[locs[0]].values 
     y_cells = buffer_ds[locs[1]].values 
-    
+        
     ## convert xarray dataset to dataframe 
     buffer_df = buffer_ds.to_dataframe()  
     buffer_cols = buffer_df.columns 
@@ -533,7 +535,7 @@ def iterative_pixel_search(ds, location, init_x, init_y,
     return out_df 
 
 
-def buffer_search(ds, gauge_locations, X0, Y0, cell_size_X, cell_size_Y,
+def buffer_search(ds, df_gauges, cell_size_X, cell_size_Y,
                   buffer_size, cols = ['dis24', 'upArea'], coords=['time'],
                   save_csv = False, save_dir = None):
     
@@ -543,15 +545,22 @@ def buffer_search(ds, gauge_locations, X0, Y0, cell_size_X, cell_size_Y,
     ## data into dataframe 
     warnings.filterwarnings('ignore')
     
+    gauge_locations = df_gauges['loc_id'].unique() 
+    
     ## start loop trough gauge locations 
     for i in tqdm(range(len(gauge_locations))):
         loc= gauge_locations[i]
+        
+        ## get gauge loc 
+        data_gauge = df_gauges[ df_gauges['loc_id'] == loc]
+        gauge_X = data_gauge['x'].unique()[0] 
+        gauge_Y = data_gauge['y'].unique()[0]
     
         ##buffer search
         df_buffer = iterative_pixel_search(     ds,
                                                 loc,
-                                                init_x = X0[i],
-                                                init_y = Y0[i],
+                                                init_x = gauge_X,
+                                                init_y = gauge_Y,
                                                 cell_size_x = cell_size_X,
                                                 cell_size_y = cell_size_Y,
                                                 buffer_size = buffer_size,
@@ -584,45 +593,90 @@ def match_label(df_features, df_match,
     n_not_available = 0 
     n_not_found= 0 
     
+    rejected_x = [] 
+    rejected_y = [] 
+    
     match_ids = df_match[match_id].astype('str').values
         
     ## filter feature_ids based on gauge match 
     for m_id in match_ids:
         
         subset_features = df_features[ (df_features[gauge_id] == m_id) & (df_features['is_gauge'] == 0)] 
+        
+        gauge_data = df_features[ (df_features[gauge_id] == m_id) & (df_features['is_gauge'] == 1)] 
                 
         if len(subset_features) > 0:
 
             ## get gauge specific data 
-            loc_df = df_match[ df_match[match_id] == int(m_id)]
+            loc_df = df_match[ df_match[match_id] == int(m_id)] 
+            
+            
+            ecmwf_X, ecmwf_Y, ecmwf_lat, ecmwf_lon = loc_df[[match_X, match_Y, 'StationLat', 'StationLon']].values[0]
+            
+            grdc_X, grdc_Y, grdc_lat, grdc_lon = gauge_data[[feature_X, feature_Y, 'lat', 'lon']].values[0]
+            
+
+            
             x_mapped, y_mapped = loc_df[[match_X, match_Y]].values[0] 
             
+            ## collect data and calculate absolute distances 
             sort_df = pd.DataFrame() 
-            sort_df['dX'] = (subset_features[feature_X] - x_mapped) 
-            sort_df['dY'] = (subset_features[feature_X] - y_mapped) 
+            sort_df['X'] = subset_features[feature_X]
+            sort_df['Y'] = subset_features[feature_Y]
+            sort_df['dX'] = sort_df['X'] - x_mapped
+            sort_df['dY'] = sort_df['Y'] - y_mapped
+            sort_df['X_abs'] = sort_df['dX'].abs() 
+            sort_df['Y_abs'] = sort_df['dY'].abs() 
+                     
+            ## sort based on absolute distances 
+            sorted_df = sort_df.sort_values(by=['X_abs', 'Y_abs']) 
             
-            sorted_df = sort_df.sort_values(by=['dX', 'dY']) 
-            
+            ## get IX 
             matched_ID = sorted_df.index[0]
+                      
             
-            ### set tolerance - what is maximum value for match to differ? 
-            dX = sorted_df.loc[matched_ID, 'dX']
-            dY = sorted_df.loc[matched_ID, 'dY']
-            
+            ## check match - extract dX and dY 
+            dX = sorted_df.loc[matched_ID, 'X_abs']
+            dY = sorted_df.loc[matched_ID, 'Y_abs']
+
+            ## if tolerance smaller than size of grid cell (tolerance): accept match 
             if (dX <= tol)  & (dY <= tol):
                 df_features.loc[matched_ID, 'match_obs'] = 1
                 n_found += 1 
+                
+            ## else: reject match 
             else:
-                # print('[ERROR] match for {} not satisfied'.format(m_id))
                 n_not_found += 1 
+                rejected_x.append(dX) 
+                rejected_y.append(dY)
+                
+                if dX > 20000:
+                
+                    print(m_id)
+                    print(ecmwf_X-grdc_X) 
+                    print(ecmwf_Y-grdc_Y)
+                    print(ecmwf_lon-grdc_lon) 
+                    print(ecmwf_lat-grdc_lat)      
+                    print(ecmwf_lon, grdc_lon, ecmwf_lat, grdc_lat)
+                    print(subset_features[['lat', 'lon']])
+                    print('\n')                
 
         else:
-            # print('[INFO] gauge {} not found in features'.format(m_id))
             n_not_available += 1 
     
     print('\n\n[OVERVIEW] \n {:.2f}% found \n {:.2f}% not found \n {:.2f}% not available'.format( (n_found/len(match_ids))*100,
                                                                                             (n_not_found/len(match_ids))*100,
-                                                                                            (n_not_available/len(match_ids))*100) )
+                                                                                           (n_not_available/len(match_ids))*100) )
+    
+    n_multiply = 650
+    set_bins = list(range(0, ( int(tol)*n_multiply)+1, int(tol) )) 
+    print( np.max(rejected_x)/tol, np.max(rejected_y)/tol)
+    
+    plt.figure() 
+    plt.subplot(121) 
+    plt.hist(rejected_x, bins=set_bins)
+    plt.subplot(122) 
+    plt.hist(rejected_y, bins=set_bins)
     
     df_features['match_obs']  = df_features['match_obs'].fillna(0)
     return df_features 
