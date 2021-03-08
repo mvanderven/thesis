@@ -12,11 +12,9 @@ from pathlib import Path
 # from pprint import pprint
 # import pyproj
 import datetime
-import matplotlib.pyplot as plt 
+# import matplotlib.pyplot as plt 
 # import cartopy 
 import time 
-from tqdm import tqdm 
-import warnings 
 
 ## import own functions  --> check bar in top right hand to directory of files
 import thesis_utils as utils 
@@ -50,7 +48,8 @@ print('File names loaded \n')
 #%% Load EFAS data 
 
 print('Load EFAS data')
-efas_dir = model_data_dict[keys_efas[1]]
+# efas_dir = model_data_dict[keys_efas[1]]
+efas_dir = model_data_dict[keys_efas[0]]
 ds_efas = utils.open_efas(efas_dir, dT='06', do_resample_24h = True)
 print('EFAS data loaded \n')
 
@@ -73,22 +72,31 @@ print("--- {:.2f} minutes ---".format( (time.time() - start_time)/60.) )
 
 ### sort data based on loc_id 
 sorted_gauge_data = gauge_data_grdc[['loc_id', 'lat', 'lon']].groupby(by='loc_id')
+## get lat,lon coordinates 
 lat_coords = sorted_gauge_data['lat'].mean()
 lon_coords = sorted_gauge_data['lon'].mean()
 
+## get gauge identifiers 
 gauge_locs = lat_coords.index 
 
+## reproject coordinates 
 coords_4326 = np.array([lon_coords, lat_coords]).transpose()
 coords_3035 = utils.reproject_coordinates(coords_4326, 4326, 3035)
-print('Gauge data loaded \n')
+ 
+## add reprojected coordinates to gauge dataframe
+for i in range(len(gauge_locs)):
+    gauge_id = gauge_locs[i]
+    gauge_data_grdc.loc[ gauge_data_grdc['loc_id'] == gauge_id, 'x'] = coords_3035[i,0]
+    gauge_data_grdc.loc[ gauge_data_grdc['loc_id'] == gauge_id, 'y'] = coords_3035[i,1]
 
+print('Gauge data loaded \n')
 
 #%% Apply time search to model data
 
 print('Execute time search')
 ## set up time of search query 
 start_date = '1991-01-01'
-end_date = '1991-03-31'
+end_date = '1991-12-31'
 
 T0 = datetime.datetime.strptime(start_date, '%Y-%m-%d').strftime('%Y-%m-%d')
 T1 = datetime.datetime.strptime(end_date, '%Y-%m-%d').strftime('%Y-%m-%d') 
@@ -132,9 +140,9 @@ gauge_locs = updated_gauge_locs
 # gauge_data_grdc = None 
 
 
-#%% 
+#%% Load or create buffer 
 
-load_buffer_results = True
+load_buffer_results = False
 
 #%% Buffer analysis in model data 
 
@@ -146,8 +154,6 @@ if not load_buffer_results:
     cell_size_efas = 5000       # m2 
     cell_size_glofas = 0.1      # degrees lat/lon
     
-    
-    
     ## TEST 
     collect_efas, fn_save_results = utils.buffer_search(
                                        efas_time, gauge_locs,
@@ -155,45 +161,16 @@ if not load_buffer_results:
                                        cell_size_efas, cell_size_efas, buffer_size,
                                        save_csv=True, save_dir = model_data)
     
-    
-    
-    # def buffer_search(ds, gauge_locations, X0, Y0, cell_size_X, cell_size_Y,
-    #                   buffer_size, cols = ['dis24', 'upArea'], coords=['time']):
-    
-    # collect_efas = pd.DataFrame()
-    
-    ## ignore warning that come with loading 
-    ## data into dataframe 
-    # warnings.filterwarnings('ignore')
-    
-    # for i in tqdm(range(len(gauge_locs))):
-        # loc= gauge_locs[i]
-    
-        # ## efas buffer search
-        # efas_buffer = utils.iterative_pixel_search(     efas_time,
-        #                                                 loc,
-        #                                                 init_x = coords_3035[i][0],
-        #                                                 init_y = coords_3035[i][1],
-        #                                                 cell_size_x = cell_size_efas,
-        #                                                 cell_size_y = cell_size_efas,
-        #                                                 buffer_size = buffer_size,
-        #                                                 cols = ['dis24', 'upArea'],
-        #                                                 coords = ['time']) 
-        
-        # collect_efas = collect_efas.append(efas_buffer)
-        
-    ## reset display of warning messages
-    # warnings.filterwarnings('default')
-    
     print('Buffer search done \n')
 
-#%% 
+#%% Load previously created buffer results 
 
 if load_buffer_results: 
+    print('Load buffer results \n')
     fn_save_step = model_data / 'save_buffer_search.csv'
     collect_efas = pd.read_csv(fn_save_step, index_col=0).astype({'match_gauge':'str'})
 
-#%% 
+#%% Show buffer results 
 
 ## release glofas and efas xarray from memory (large memory)
 # ds_efas = None
@@ -212,14 +189,14 @@ collect_timeseries, collect_locations = thesis_signatures.reshape_data(gauge_tim
                                                                        T1 = end_date)
 
 #%% Show collected data
-
 print(collect_timeseries.head())
+
 
 #%% Check for missing values in model simulation data 
 missing_cols = collect_timeseries.columns[ collect_timeseries.isnull().any()].tolist() 
 
 ## minimum percentage of availabel data over period of interest 
-min_percentage = 10. 
+max_percentage = 80. 
 
 for col in missing_cols:
     n_missing = collect_timeseries[col].isnull().sum() 
@@ -231,26 +208,28 @@ for col in missing_cols:
                                                                            p_missing,
                                                                            n_remaining) )
     
-    if p_missing > min_percentage:
-        print('\tMissing percentage is too large - remove from analysis')
-        collect_timeseries = collect_timeseries.drop(columns=[col], axis=1) 
-    
+    if p_missing > max_percentage:
+        print('\tMissing percentage is too large - removed from analysis')
+        collect_timeseries = collect_timeseries.drop(columns=[col])  
+        collect_locations = collect_locations.drop(index=[col])
+        # collect_timeseries = collect_timeseries.drop(labels=[col], axis=1)
+
 #%% Signature calculation 
 
 ### SIGNATURES 
 calc_features = [
                     'normal', 
-                    # 'log', 
-                    # 'gev', 
-                    # 'gamma', 
-                    # 'n-acorr',          ## fix nan-issues - remaining length after nan removal too small
-                    # 'n-ccorr',                        ## fix nan-issues 
-                    # 'fdc-q', 'fdc-slope', 'lf-ratio',
-                    # 'bf-index', 
-                    # 'dld', 
-                    # 'rld', 
-                    # 'rbf',
-                    # 'src'
+                    'log', 
+                    'gev', 
+                    'gamma', 
+                    'n-acorr',
+                    'n-ccorr',
+                    'fdc-q', 'fdc-slope', 'lf-ratio',
+                    'bf-index', 
+                    'dld', 
+                    'rld', 
+                    'rbf',
+                    'src'
                    ]
 
 efas_feature_table = thesis_signatures.calc_features(collect_timeseries, 
@@ -262,34 +241,67 @@ efas_feature_table = thesis_signatures.calc_features(collect_timeseries,
                                                      T_end = end_date)
 
 #%% Show results signature calculation 
+print(efas_feature_table.head())
 
-print(efas_feature_table)
+#%% Missing values? 
+
+print('\n Check for missing values:')
+check_cols = [
+    'Nm-all', 'Lmy-all', 'Lmx-all', 'Gu-all', 'Gk-all',
+    'Ns-all', 'Lsy-all', 'Lsx-all', 'Ga-all', 'Gt-all',
+    'N-gof-all', 'L-gof-all', 'Gev-gof-all', 'G-gof-all',
+    'alag-1-all', 'alag-2-all', 'alag-5-all',
+    'clag-0-all', 'clag-1-all', 'clag-5-all',
+    'fdcQ-1-all', 'fdcQ-5-all', 'fdcQ-10-all', 'fdcQ-50-all', 'fdcQ-90-all',
+    'fdcQ-95-all', 'fdcQ-99-all',
+    'fdcS-all', 'lf-all', 
+    'bfi-all', 'dld-all', 'rld-all', 'rbf-all', 's_rc-all', 'T0_rc-all'
+    ]
+
+print(efas_feature_table[check_cols].isnull().sum())
+
+#%% Identify rows with missing values
+missing_rows = efas_feature_table[ efas_feature_table[check_cols].isnull().any(axis=1) ].index.to_list()
+print(missing_rows)
+
+if len(missing_rows) >= 1:
+    ## drop rows with missing values 
+    efas_feature_table = efas_feature_table.drop(index=missing_rows)  
+    print('Remaining missing values: ', efas_feature_table[check_cols].isnull().sum().sum()  )
+
+#%% Save feature table values 
+
+features_fn = gauge_data / 'unlabelled_features_{}.csv'.format( datetime.datetime.today().strftime('%Y%m%d'))
+efas_feature_table.to_csv(features_fn, index=False)
+print('[INFO] features saved as csv:\n{}'.format(features_fn))                                                               
 
 #%% Display feature cross-correlation
 
-import seaborn as sns 
+## all columns 
+# cols_analysis = efas_feature_table.columns 
 
-cols_analysis = efas_feature_table.columns 
+## all columns - sorted 
+cols_analysis = [
+    'x', 'lon', 'y', 'lat',
+    'Nm-all', 'Lmy-all', 'Lmx-all', 'Gu-all', 'Gk-all',
+    'Ns-all', 'Lsy-all', 'Lsx-all', 'Ga-all', 'Gt-all',
+    'N-gof-all', 'L-gof-all', 'Gev-gof-all', 'G-gof-all',
+    'alag-1-all', 'alag-2-all', 'alag-5-all',
+    'clag-0-all', 'clag-1-all', 'clag-5-all',
+    'fdcQ-1-all', 'fdcQ-5-all', 'fdcQ-10-all', 'fdcQ-50-all', 'fdcQ-90-all',
+    'fdcQ-95-all', 'fdcQ-99-all',
+    'fdcS-all', 'lf-all', 
+    'bfi-all', 'dld-all', 'rld-all', 'rbf-all', 's_rc-all', 'T0_rc-all'
+    ]
 
-# cols_analysis = ['Nm-all', 'Ns-all', 'N-gof-all', 'Lmy-all',
-#         'Lsy-all', 'Lmx-all', 'Lsx-all', 'L-gof-all', 'Gu-all', 'Ga-all',
-#         'Gev-gof-all', 'Gk-all', 'Gt-all', 'G-gof-all', 'alag-1-all',
-#         'alag-2-all', 'alag-5-all', 'clag-0-all', 'clag-1-all', 'clag-5-all',
-#         'fdcQ-1-all', 'fdcQ-5-all', 'fdcQ-10-all', 'fdcQ-50-all', 'fdcQ-90-all',
-#         'fdcQ-95-all', 'fdcQ-99-all', 'fdcS-all', 'lf-all', 'bfi-all',
-#         'dld-all', 'rld-all', 'rbf-all', 's_rc-all', 'T0_rc-all']
+fig = plotter.display_cross_correlation(efas_feature_table, cols_analysis)
 
-plt.figure()
-plt.title('Cross-correlation')
-sns.heatmap(efas_feature_table[cols_analysis].corr(), vmin=-1, vmax=1, cmap='bwr' )
-plt.show() 
 
 #%%  Label data-set 
 
 ### label with dataset 
 labelled_fn = gauge_data / "grdc_efas_selection_20210218-1.csv" 
 print(labelled_fn.exists())
-
 
 
 #%% Show total time duration 
