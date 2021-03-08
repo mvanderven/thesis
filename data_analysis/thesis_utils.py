@@ -573,7 +573,59 @@ def buffer_search(ds, gauge_locations, X0, Y0, cell_size_X, cell_size_Y,
         return out_df, fn_out
     
     return out_df 
+
+
+def match_label(df_features, df_match, 
+                gauge_id, feature_X, feature_Y,
+                match_id, match_X, match_Y,
+                tol = 5000.): 
+       
+    n_found = 0  
+    n_not_available = 0 
+    n_not_found= 0 
+    
+    match_ids = df_match[match_id].astype('str').values
+        
+    ## filter feature_ids based on gauge match 
+    for m_id in match_ids:
+        
+        subset_features = df_features[ (df_features[gauge_id] == m_id) & (df_features['is_gauge'] == 0)] 
+                
+        if len(subset_features) > 0:
+
+            ## get gauge specific data 
+            loc_df = df_match[ df_match[match_id] == int(m_id)]
+            x_mapped, y_mapped = loc_df[[match_X, match_Y]].values[0] 
             
+            sort_df = pd.DataFrame() 
+            sort_df['dX'] = (subset_features[feature_X] - x_mapped) 
+            sort_df['dY'] = (subset_features[feature_X] - y_mapped) 
+            
+            sorted_df = sort_df.sort_values(by=['dX', 'dY']) 
+            
+            matched_ID = sorted_df.index[0]
+            
+            ### set tolerance - what is maximum value for match to differ? 
+            dX = sorted_df.loc[matched_ID, 'dX']
+            dY = sorted_df.loc[matched_ID, 'dY']
+            
+            if (dX <= tol)  & (dY <= tol):
+                df_features.loc[matched_ID, 'match_obs'] = 1
+                n_found += 1 
+            else:
+                # print('[ERROR] match for {} not satisfied'.format(m_id))
+                n_not_found += 1 
+
+        else:
+            # print('[INFO] gauge {} not found in features'.format(m_id))
+            n_not_available += 1 
+    
+    print('\n\n[OVERVIEW] \n {:.2f}% found \n {:.2f}% not found \n {:.2f}% not available'.format( (n_found/len(match_ids))*100,
+                                                                                            (n_not_found/len(match_ids))*100,
+                                                                                            (n_not_available/len(match_ids))*100) )
+    
+    df_features['match_obs']  = df_features['match_obs'].fillna(0)
+    return df_features 
 
 
 
