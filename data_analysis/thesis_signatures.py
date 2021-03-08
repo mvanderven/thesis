@@ -188,8 +188,12 @@ def calc_cross_correlation(ts0, ts1, lag=0):
 
 def calc_FDC(ts):
     
+    ## drop missing values 
+    ts_drop = ts.dropna() 
+    
     ## sort values from small to large 
-    ts_sorted = ts.sort_values()
+    # ts_sorted = ts.sort_values()
+    ts_sorted = ts_drop.sort_values()
     
     ## calculate ranks of data 
     ranks = stats.rankdata(ts_sorted, method='dense')
@@ -564,8 +568,6 @@ def calc_features(collect_df, locations, features = feature_options, time_window
     fdc_features =   [feat for feat in features if feat in fdc_options]
     hydro_features = [feat for feat in features if feat in hydro_options]
     
-    print(out_df.head())
-    
     for tw in time_window:
         
         ### slice or resample all columns 
@@ -574,7 +576,6 @@ def calc_features(collect_df, locations, features = feature_options, time_window
         
         ### calculate STATISTIC features 
         for feature in stat_features:
-            print(feature)
             ## get expected column names 
             return_cols = func_dict[feature]['cols']
             
@@ -587,7 +588,7 @@ def calc_features(collect_df, locations, features = feature_options, time_window
         
         ### calculate CORRELATION features 
         for feature in corr_features:
-            print(feature)
+            
             ## n-lag autocorrelation 
             if 'n-acorr' in feature:
                 
@@ -596,7 +597,6 @@ def calc_features(collect_df, locations, features = feature_options, time_window
                 
                 ## loop through given lag times 
                 for i in range(len(n_lag)):
-                    print(n_lag[i])
                     ## check if lag time smaller than total timeseries time 
                     if n_lag[i] < len(calc_df):
                         
