@@ -554,16 +554,23 @@ def calc_features(collect_df, locations, features = feature_options, time_window
     
     for ix in idx_gauges: 
         
+        ## give info about the type 
+        out_df.loc[ix, 'is_gauge'] = 1 
+        
         ## get gauge id 
         gauge_id = ix.split('_')[-1]
         
         ## get subset of locations with matching id 
         sub_locations = locations[ locations['gauge_id'] == gauge_id] 
-        
+                
         for sub_loc in sub_locations['name_id']:
-            
+            out_df.loc[sub_loc, 'match'] = gauge_id
             for coord_type in ['x', 'y', 'lon', 'lat']:
                 out_df.loc[sub_loc, coord_type] =  sub_locations[sub_locations['name_id'] == sub_loc][coord_type].values[0]
+    
+    ## if not gauge, set is_gauge to 0 
+    out_df['is_gauge'] = out_df['is_gauge'].fillna(0)
+    # out_df['is_gauge'].fillna(0, inplace=True)
         
     ### FINISH PREP - start FEATURES                         
     ## organize features 
