@@ -84,6 +84,7 @@ coords_4326 = np.array([lon_coords, lat_coords]).transpose()
 coords_3035 = utils.reproject_coordinates(coords_4326, 4326, 3035)
  
 ## add reprojected coordinates to gauge dataframe
+## TO DO -- try apply approach over columns 
 for i in range(len(gauge_locs)):
     gauge_id = gauge_locs[i]
     gauge_data_grdc.loc[ gauge_data_grdc['loc_id'] == gauge_id, 'x'] = coords_3035[i,0]
@@ -150,14 +151,13 @@ if not load_buffer_results:
     
     print('Start buffer search\n')
     
-    buffer_size = 1
+    buffer_size = 4
     cell_size_efas = 5000       # m2 
     cell_size_glofas = 0.1      # degrees lat/lon
     
     ## TEST 
     collect_efas, fn_save_results = utils.buffer_search(
-                                       efas_time, gauge_locs,
-                                       coords_3035[:,0], coords_3035[:,1],
+                                       efas_time, gauge_time,
                                        cell_size_efas, cell_size_efas, buffer_size,
                                        save_csv=True, save_dir = model_data)
     
@@ -191,52 +191,57 @@ collect_timeseries, collect_locations = thesis_signatures.reshape_data(gauge_tim
 #%% Show collected data
 print(collect_timeseries.head())
 
-
 #%% Check for missing values in model simulation data 
-missing_cols = collect_timeseries.columns[ collect_timeseries.isnull().any()].tolist() 
+missing_series = collect_timeseries.columns[ collect_timeseries.isnull().any()].tolist() 
 
 ## minimum percentage of availabel data over period of interest 
 max_percentage = 80. 
+ts_max = len(collect_timeseries)
+n_drop = 0 
 
-for col in missing_cols:
-    n_missing = collect_timeseries[col].isnull().sum() 
-    
-    p_missing = (n_missing/len(collect_timeseries))*100
-    n_remaining = len(collect_timeseries)-n_missing
-    print('{} missing {} values -- {:.2f} % of total, {} remaining'.format(col,
-                                                                           n_missing,
-                                                                           p_missing,
-                                                                           n_remaining) )
-    
+for missing_ts in missing_series:
+    n_missing = collect_timeseries[missing_ts].isnull().sum() 
+    p_missing = (n_missing/ts_max)*100
+        
     if p_missing > max_percentage:
-        print('\tMissing percentage is too large - removed from analysis')
-        collect_timeseries = collect_timeseries.drop(columns=[col])  
-        collect_locations = collect_locations.drop(index=[col])
-        # collect_timeseries = collect_timeseries.drop(labels=[col], axis=1)
+        print('\tMissing percentage of {} is too large ( {}% ) - remove from analysis'.format(missing_ts, p_missing))
+        n_drop += 1 
+        
+        cols_ts = collect_timeseries.columns 
+        rows_loc = collect_locations.index 
+        
+        if missing_ts in cols_ts: 
+            collect_timeseries = collect_timeseries.drop(columns=[missing_ts])  
+        if missing_ts in rows_loc:
+            collect_locations = collect_locations.drop(index=[missing_ts])
+
+n_after_drop = collect_timeseries.shape[1]
+print('{} simulations dropped - {} remaining for analysis'.format(n_drop, n_after_drop))
+
 
 #%% Signature calculation 
 
 ### SIGNATURES 
 calc_features = [
                     'normal', 
-                    'log', 
-                    'gev', 
-                    'gamma', 
-                    'n-acorr',
-                    'n-ccorr',
-                    'fdc-q', 'fdc-slope', 'lf-ratio',
-                    'bf-index', 
-                    'dld', 
-                    'rld', 
-                    'rbf',
-                    'src'
+                    # 'log', 
+                    # 'gev', 
+                    # 'gamma', 
+                    # 'n-acorr',
+                    # 'n-ccorr',
+                    # 'fdc-q', 'fdc-slope', 'lf-ratio',
+                    # 'bf-index', 
+                    # 'dld', 
+                    # 'rld', 
+                    # 'rbf',
+                    # 'src'
                    ]
 
 efas_feature_table = thesis_signatures.calc_features(collect_timeseries, 
                                                      collect_locations,
                                                      features=calc_features,
-                                                     n_lag=[1,2,5], 
-                                                     n_cross = [0, 1, 5],
+                                                     n_lag=[1], 
+                                                     n_cross = [0, 1],
                                                      var='dis06',
                                                      T_end = end_date)
 
@@ -270,8 +275,7 @@ if len(missing_rows) >= 1:
     print('Remaining missing values: ', efas_feature_table[check_cols].isnull().sum().sum()  )
 
 #%% Save feature table values 
-
-features_fn = gauge_data / 'unlabelled_features_{}.csv'.format( datetime.datetime.today().strftime('%Y%m%d'))
+features_fn = gauge_data / 'unlabelled_features_{}-1.csv'.format( datetime.datetime.today().strftime('%Y%m%d'))
 efas_feature_table.to_csv(features_fn, index=False)
 print('[INFO] features saved as csv:\n{}'.format(features_fn))                                                               
 
@@ -297,12 +301,28 @@ cols_analysis = [
 fig = plotter.display_cross_correlation(efas_feature_table, cols_analysis)
 
 
-#%%  Label data-set 
-
-### label with dataset 
+#%%  Load labelled dataset 
 labelled_fn = gauge_data / "grdc_efas_selection_20210218-1.csv" 
-print(labelled_fn.exists())
+df_labels = pd.read_csv(labelled_fn)
 
+### COLUMNS OF INTEREST 
+##             grdc station id      provided lat,   provided lon 
+label_cols = ['updated_GRDC_ID',   'StationLat',   'StationLon',   
+              
+##            Lisflood mapped X/Y-coord 
+              'StationX', 'StationY', 
+              
+##           lon/lat coords based on proximity 
+             'snap_lon', 'snap_lat',  
+             
+##           Lisflood X/Y pixel based on lat/lon coords 
+             'snap_X', 'snap_Y'  ] 
+
+#%% Create labelled feature set 
+
+features_matched = utils.match_label(efas_feature_table, df_labels, 
+                                     'match', 'x', 'y',
+                                     'updated_GRDC_ID', 'StationX', 'StationY')
 
 #%% Show total time duration 
 print("--- {:.2f}s seconds ---".format(time.time() - start_time_overall))
