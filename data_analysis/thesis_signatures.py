@@ -109,17 +109,18 @@ def calc_distr_log(ts, eps=1e-6):
     Y = np.log(ts+eps) 
     Y_mu = np.mean(Y)
     Y_sigma = np.std(Y)
-    # gof_Y = calc_gof(ts, stats.lognorm.rvs(s=Y_sigma, scale=Y_mu, size=len(ts)))  
     
-    X_mu = np.exp(Y_mu)
-    X_sigma = X_mu * Y_sigma 
+    gof_Y = calc_gof(ts, stats.lognorm.rvs(s=Y_sigma, scale=np.exp(Y_mu), size=len(ts)))  
+     
+    # X_mu = np.exp(Y_mu)
+    # X_sigma = X_mu * Y_sigma 
     
     ## calculate goodness of fit 
     ## create an artificial dataset based on
     ## derived mu and sigma (rvs)
-    gof_X = calc_gof(ts, stats.lognorm.rvs(s=X_sigma, scale=X_mu, size=len(ts)))
-    
-    return [Y_mu, Y_sigma, X_mu, X_sigma, gof_X]
+    # gof_X = calc_gof(ts, stats.lognorm.rvs(s=X_sigma, scale=X_mu, size=len(ts))) 
+
+    return [Y_mu, Y_sigma, gof_Y]
 
 def calc_distr_gev(ts):
     
@@ -385,7 +386,7 @@ func_dict = {
         },
     'log':      {
         'func': calc_distr_log,
-        'cols': ['Lmy-{}', 'Lsy-{}', 'Lmx-{}', 'Lsx-{}', 'L-gof-{}']        
+        'cols': ['Lm-{}', 'Ls-{}', 'L-gof-{}']        
         },
     'gev':      {
          'func': calc_distr_gev,
@@ -539,10 +540,13 @@ def reshape_data(df_obs, df_sim, locations, var='dis24', T0 = '1991-01-01', T1 =
 
 def calc_features(collect_df, locations, features = feature_options, time_window = ['all'], n_lag=[0,1], n_cross=[0],
                   fdc_q = [1, 5, 10, 50, 90, 95, 99], mean_threshold = 0., T_start = '1991-01-01', T_end = '2020-12-31'):
-        
+     
+    print('[START] feature calculation')
+    
     assert any(feature in feature_options for feature in features), '[ERROR] not all features can be calculated' 
     assert any(tw in option_time_window for tw in time_window), '[ERROR] not all time windows can be calculated' 
     
+    print('[INFO] prep')
     ## empty dataframe for signatures output 
     out_df = pd.DataFrame()
         
@@ -574,7 +578,8 @@ def calc_features(collect_df, locations, features = feature_options, time_window
     ## if not gauge, set is_gauge to 0 
     out_df['is_gauge'] = out_df['is_gauge'].fillna(0)
     # out_df['is_gauge'].fillna(0, inplace=True)
-        
+    
+    print('[INFO] start feature calculation')    
     ### FINISH PREP - start FEATURES                         
     ## organize features 
     stat_features =  [feat for feat in features if feat in stat_options]
@@ -590,6 +595,8 @@ def calc_features(collect_df, locations, features = feature_options, time_window
         
         ### calculate STATISTIC features 
         for feature in stat_features:
+            print('[INFO] calc stats: {}'.format(feature))
+            
             ## get expected column names 
             return_cols = func_dict[feature]['cols']
             
@@ -602,6 +609,7 @@ def calc_features(collect_df, locations, features = feature_options, time_window
         
         ### calculate CORRELATION features 
         for feature in corr_features:
+            print('[INFO] calc correlation: {}'.format(feature))
             
             ## n-lag autocorrelation 
             if 'n-acorr' in feature:
@@ -655,6 +663,7 @@ def calc_features(collect_df, locations, features = feature_options, time_window
                                 out_df.loc[gauge_i, return_col_name] = cross_corr 
                             
         for feature in fdc_features:
+            print('[INFO] calc FDC: {}'.format(feature))
             
             if 'fdc-q' in feature:
                                     
@@ -671,6 +680,8 @@ def calc_features(collect_df, locations, features = feature_options, time_window
                 out_df[ return_cols[0].format(tw) ] = cdf
             
         for feature in hydro_features:
+            print('[INFO] calc index: {}'.format(feature))
+            
             return_cols = func_dict[feature]['cols']
             cdf = calc_df[idx].apply(func_dict[feature]['func'])
             
@@ -682,7 +693,8 @@ def calc_features(collect_df, locations, features = feature_options, time_window
             else:
                 col_name = return_cols[0].format(tw)
                 out_df[ col_name ] = cdf
-            
+    
+    print('[FINISH] calculating features ')
     return out_df 
 
 
