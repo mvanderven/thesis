@@ -532,6 +532,7 @@ def reshape_data(df_obs, df_sim, locations, var='dis24', T0 = '1991-01-01', T1 =
     loc_df = pd.DataFrame({'name_id': row_name, 'gauge_id': row_id, 
                            'lat': list_lat, 'lon': list_lon,
                            'x': list_X, 'y': list_Y})
+    loc_df.set_index('name_id', inplace=True)
     
     return collect_df, loc_df 
 
