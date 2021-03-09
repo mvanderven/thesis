@@ -538,7 +538,7 @@ def reshape_data(df_obs, df_sim, locations, var='dis24', T0 = '1991-01-01', T1 =
 
 
 def calc_features(collect_df, locations, features = feature_options, time_window = ['all'], n_lag=[0,1], n_cross=[0],
-                  fdc_q = [1, 5, 10, 50, 90, 95, 99], mean_threshold = 0., var='dis24', T_start = '1991-01-01', T_end = '2020-12-31'):
+                  fdc_q = [1, 5, 10, 50, 90, 95, 99], mean_threshold = 0., T_start = '1991-01-01', T_end = '2020-12-31'):
         
     assert any(feature in feature_options for feature in features), '[ERROR] not all features can be calculated' 
     assert any(tw in option_time_window for tw in time_window), '[ERROR] not all time windows can be calculated' 

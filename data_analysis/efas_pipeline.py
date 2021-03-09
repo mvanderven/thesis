@@ -242,7 +242,6 @@ efas_feature_table = thesis_signatures.calc_features(collect_timeseries,
                                                      features=calc_features,
                                                      n_lag=[1], 
                                                      n_cross = [0, 1],
-                                                     var='dis06',
                                                      T_end = end_date)
 
 #%% Show results signature calculation 
