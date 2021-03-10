@@ -55,13 +55,11 @@ start_time = time.time()
 gauge_file_names = gauge_data_dict[gauge_keys[0]] 
 
 ## get a sub-sample of gauge_file_names 
+n_samples = 10 
+gauge_file_names = np.random.choice(gauge_file_names, n_samples) 
 
 ## load data 
-# gauge_data_grdc, meta_grdc = utils.read_gauge_data( gauge_file_names, dtype='grdc')
-
-print(gauge_data_grdc.head())
-
-print("--- {:.2f} minutes ---".format( (time.time() - start_time)/60.) )
+gauge_data_grdc, meta_grdc = utils.read_gauge_data( gauge_file_names, dtype='grdc')
 
 #%% Repoject gauge coordinates 
 coords_4326 = np.array( [gauge_data_grdc['lon'].values, gauge_data_grdc['lat'].values]).transpose()
@@ -72,7 +70,9 @@ gauge_data_grdc['y'] = coords_3035[:,1]
 
 gauge_locs = gauge_data_grdc['loc_id'].unique()
 
+print("--- {:.2f} minutes ---\n".format( (time.time() - start_time)/60.) )
 print('Gauge data loaded \n')
+print(gauge_data_grdc.head())
 
 #%% Set up time boundaries 
 
