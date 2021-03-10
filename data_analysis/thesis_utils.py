@@ -12,6 +12,7 @@ import pandas as pd
 import pyproj 
 from tqdm import tqdm
 import warnings
+import datetime 
 
 import matplotlib.pyplot as plt 
 
@@ -469,8 +470,6 @@ def iterative_pixel_search(ds, location, init_x, init_y,
                            cell_size_x, cell_size_y, buffer_size, 
                            cols, coords=['time'], locs=['x','y']):
     
-
-    
     ## find center coordinates 
     center_search = ds.sel( {locs[0]: init_x,
                            locs[1]: init_y},
@@ -490,6 +489,7 @@ def iterative_pixel_search(ds, location, init_x, init_y,
     ## get coordinates 
     x_cells = buffer_ds[locs[0]].values 
     y_cells = buffer_ds[locs[1]].values 
+
         
     ## convert xarray dataset to dataframe 
     buffer_df = buffer_ds.to_dataframe()  
@@ -551,7 +551,7 @@ def buffer_search(ds, df_gauges, cell_size_X, cell_size_Y,
     for i in tqdm(range(len(gauge_locations))):
         loc= gauge_locations[i]
         
-        ## get gauge loc 
+        ## get gauge X and Y  
         data_gauge = df_gauges[ df_gauges['loc_id'] == loc]
         gauge_X = data_gauge['x'].unique()[0] 
         gauge_Y = data_gauge['y'].unique()[0]
@@ -569,13 +569,12 @@ def buffer_search(ds, df_gauges, cell_size_X, cell_size_Y,
         
         out_df = out_df.append(df_buffer)
  
-    
     ## reset display of warning messages
     warnings.filterwarnings('default')
     
     ## save results? 
     if save_csv:
-        fn_out = 'buffer_search_{}.csv'.format( pd.datetime.today().strftime('%Y%m%d') )
+        fn_out = 'buffer_search_{}_buffer_size_{}.csv'.format( datetime.datetime.today().strftime('%Y%m%d'), buffer_size )
         if save_dir is not None:
             fn_out = Path(save_dir) / fn_out 
         out_df.to_csv(fn_out, index=False)
@@ -595,31 +594,35 @@ def match_label(df_features, df_match,
     
     rejected_x = [] 
     rejected_y = [] 
+    id_to_remove = [] 
     
+    ## get gauge IDs from labelled set 
     match_ids = df_match[match_id].astype('str').values
         
     ## filter feature_ids based on gauge match 
     for m_id in match_ids:
         
+        ## get subset of df with features - without the gauge data 
         subset_features = df_features[ (df_features[gauge_id] == m_id) & (df_features['is_gauge'] == 0)] 
         
+        ## extract the gauge from features 
         gauge_data = df_features[ (df_features[gauge_id] == m_id) & (df_features['is_gauge'] == 1)] 
                 
         if len(subset_features) > 0:
 
-            ## get gauge specific data 
+            ## get gauge specific labelled data 
             loc_df = df_match[ df_match[match_id] == int(m_id)] 
             
-            
+            ## get Lisflood XY coordinates & matching lat/lon coordinates 
             ecmwf_X, ecmwf_Y, ecmwf_lat, ecmwf_lon = loc_df[[match_X, match_Y, 'StationLat', 'StationLon']].values[0]
             
+            ## get mapped Lisflood XY coordinates 
+            x_mapped, y_mapped = loc_df[[match_X, match_Y]].values[0]
+            
+            ## get gauge data - as gauge directly placed on model 
             grdc_X, grdc_Y, grdc_lat, grdc_lon = gauge_data[[feature_X, feature_Y, 'lat', 'lon']].values[0]
-            
 
-            
-            x_mapped, y_mapped = loc_df[[match_X, match_Y]].values[0] 
-            
-            ## collect data and calculate absolute distances 
+            ## collect data and calculate distances 
             sort_df = pd.DataFrame() 
             sort_df['X'] = subset_features[feature_X]
             sort_df['Y'] = subset_features[feature_Y]
@@ -631,53 +634,44 @@ def match_label(df_features, df_match,
             ## sort based on absolute distances 
             sorted_df = sort_df.sort_values(by=['X_abs', 'Y_abs']) 
             
-            ## get IX 
+            ## get ID index of best match 
             matched_ID = sorted_df.index[0]
-                      
-            
+
             ## check match - extract dX and dY 
             dX = sorted_df.loc[matched_ID, 'X_abs']
             dY = sorted_df.loc[matched_ID, 'Y_abs']
 
-            ## if tolerance smaller than size of grid cell (tolerance): accept match 
+            ## if tolerance smaller than size of grid cell: accept match 
             if (dX <= tol)  & (dY <= tol):
                 df_features.loc[matched_ID, 'match_obs'] = 1
                 n_found += 1 
                 
-            ## else: reject match 
+            ## else: reject match
             else:
                 n_not_found += 1 
                 rejected_x.append(dX) 
-                rejected_y.append(dY)
+                rejected_y.append(dY) 
+                id_to_remove.append(m_id)
                 
-                if dX > 20000:
-                
-                    print(m_id)
-                    print(ecmwf_X-grdc_X) 
-                    print(ecmwf_Y-grdc_Y)
-                    print(ecmwf_lon-grdc_lon) 
-                    print(ecmwf_lat-grdc_lat)      
-                    print(ecmwf_lon, grdc_lon, ecmwf_lat, grdc_lat)
-                    print(subset_features[['lat', 'lon']])
-                    print('\n')                
+                                
+                print('Gauge id: ', m_id)
+                print('XY  cell distance (ecmwf minus grdc): {:.3f}, {:.3f}'.format((ecmwf_X-grdc_X)/tol, (ecmwf_Y-grdc_Y)/tol ) )
+                # print('nX nY cells: {:.3f}, {:.3f} '.format(dX/tol, dY/tol) )
+                print('\n')        
+            
 
         else:
             n_not_available += 1 
+            
+    ## remove not found from dataset 
+    ix_to_remove = df_features.index[ df_features['match'].isin(id_to_remove) ]
+    df_features = df_features.drop( index=ix_to_remove ) 
     
-    print('\n\n[OVERVIEW] \n {:.2f}% found \n {:.2f}% not found \n {:.2f}% not available'.format( (n_found/len(match_ids))*100,
-                                                                                            (n_not_found/len(match_ids))*100,
-                                                                                           (n_not_available/len(match_ids))*100) )
-    
-    n_multiply = 650
-    set_bins = list(range(0, ( int(tol)*n_multiply)+1, int(tol) )) 
-    print( np.max(rejected_x)/tol, np.max(rejected_y)/tol)
-    
-    plt.figure() 
-    plt.subplot(121) 
-    plt.hist(rejected_x, bins=set_bins)
-    plt.subplot(122) 
-    plt.hist(rejected_y, bins=set_bins)
-    
+    ## show overview 
+    print('\n\n[OVERVIEW] \n {:.2f}% ({}) found \n {:.2f}% ({}) not found \n {:.2f}% ({}) gauge not available'.format( (n_found/len(match_ids))*100, n_found,                                      
+                                                                                                                 (n_not_found/len(match_ids))*100, n_not_found,
+                                                                                                                 (n_not_available/len(match_ids))*100, n_not_available) )
+    ## fill non-one values with zeroes 
     df_features['match_obs']  = df_features['match_obs'].fillna(0)
     return df_features 
 

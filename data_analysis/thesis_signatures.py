@@ -500,7 +500,7 @@ def reshape_data(df_obs, df_sim, locations, var='dis24', T0 = '1991-01-01', T1 =
             ## and id of iterations 
             subset = df_sim[ df_sim['match_gauge'] == loc]
             n_iterations = subset['iter_id'].unique() 
-            
+                        
             ## collect data for loc_df 
             row_name.append(o_id) 
             row_id.append(loc) 
