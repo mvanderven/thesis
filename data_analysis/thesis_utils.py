@@ -13,7 +13,7 @@ import pyproj
 from tqdm import tqdm
 import warnings
 import datetime 
-
+import scipy as sc 
 import matplotlib.pyplot as plt 
 
 def reproject_coordinates(src_coords, src_epsg, dst_epsg=int(4326)):
@@ -684,7 +684,7 @@ def match_label(df_features, df_match,
 
 def calc_similarity_vector(df, gauge_id_col, type_col, label_col, feature_cols, method = 'euclidian'): 
     
-    methods = ['euclidian'] # to implement??: ['cosine'] 
+    methods = ['euclidian']
     
     assert method.lower() in methods, '[ERROR] selected method {} not in available methods: {}'.format(method.lower(), methods) 
     
@@ -710,9 +710,9 @@ def calc_similarity_vector(df, gauge_id_col, type_col, label_col, feature_cols, 
         labels = sim_features[label_col]
         ix = sim_features.index
         
-        ## calculate distance according to method 
+        ## calculate distance according to selected method 
         if method == 'euclidian':
-            distance = ((sim_features[feature_cols].values - obs_features[feature_cols].values)**2)**0.5
+            distance = ((sim_features[feature_cols].values - obs_features[feature_cols].values)**2)**0.5        
         
         ## create dataframe with results 
         _df = pd.DataFrame(distance, columns=feature_cols) 
@@ -721,6 +721,7 @@ def calc_similarity_vector(df, gauge_id_col, type_col, label_col, feature_cols, 
         
         ## add to similarity vector dataframe 
         df_SV = df_SV.append(_df)
+        
     return df_SV
 
 def norm_scaler():
