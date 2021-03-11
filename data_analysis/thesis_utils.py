@@ -698,20 +698,28 @@ def calc_similarity_vector(df, gauge_id_col, type_col, label_col, feature_cols, 
     gauge_ids = df[gauge_id_col].unique() 
     
     for gauge_id in gauge_ids: 
+        
+        ## get subset of single gauge 
         gauge_set = df[ df[gauge_id_col] == gauge_id] 
         
+        ## split into observations and simulations 
         obs_features = gauge_set[ gauge_set[type_col] == 1 ]
-        mod_features = gauge_set[ gauge_set[type_col] == 0 ]
+        sim_features = gauge_set[ gauge_set[type_col] == 0 ]
         
-        labels = mod_features[label_col]
-        ix = mod_features.index
+        ## get target values/labels and index 
+        labels = sim_features[label_col]
+        ix = sim_features.index
         
-        distance = ((mod_features[feature_cols].values - obs_features[feature_cols].values)**2)**0.5
+        ## calculate distance according to method 
+        if method == 'euclidian':
+            distance = ((sim_features[feature_cols].values - obs_features[feature_cols].values)**2)**0.5
         
+        ## create dataframe with results 
         _df = pd.DataFrame(distance, columns=feature_cols) 
         _df = _df.set_index(ix)
         _df['target'] = labels 
         
+        ## add to similarity vector dataframe 
         df_SV = df_SV.append(_df)
     return df_SV
 
