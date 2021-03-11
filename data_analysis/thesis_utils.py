@@ -489,7 +489,6 @@ def iterative_pixel_search(ds, location, init_x, init_y,
     ## get coordinates 
     x_cells = buffer_ds[locs[0]].values 
     y_cells = buffer_ds[locs[1]].values 
-
         
     ## convert xarray dataset to dataframe 
     buffer_df = buffer_ds.to_dataframe()  
@@ -640,6 +639,7 @@ def match_label(df_features, df_match,
             ## check match - extract dX and dY 
             dX = sorted_df.loc[matched_ID, 'X_abs']
             dY = sorted_df.loc[matched_ID, 'Y_abs']
+            
 
             ## if tolerance smaller than size of grid cell: accept match 
             if (dX <= tol)  & (dY <= tol):
@@ -651,12 +651,10 @@ def match_label(df_features, df_match,
                 n_not_found += 1 
                 rejected_x.append(dX) 
                 rejected_y.append(dY) 
-                id_to_remove.append(m_id)
-                
-                                
+                # id_to_remove.append(m_id)
+                                                
                 print('Gauge id: ', m_id)
                 print('XY  cell distance (ecmwf minus grdc): {:.3f}, {:.3f}'.format((ecmwf_X-grdc_X)/tol, (ecmwf_Y-grdc_Y)/tol ) )
-                # print('nX nY cells: {:.3f}, {:.3f} '.format(dX/tol, dY/tol) )
                 print('\n')        
             
 
@@ -664,15 +662,23 @@ def match_label(df_features, df_match,
             n_not_available += 1 
             
     ## remove not found from dataset 
-    ix_to_remove = df_features.index[ df_features['match'].isin(id_to_remove) ]
-    df_features = df_features.drop( index=ix_to_remove ) 
+    # ix_to_remove = df_features.index[ df_features['match'].isin(id_to_remove) ]
+    # df_features = df_features.drop( index=ix_to_remove ) 
     
     ## show overview 
     print('\n\n[OVERVIEW] \n {:.2f}% ({}) found \n {:.2f}% ({}) not found \n {:.2f}% ({}) gauge not available'.format( (n_found/len(match_ids))*100, n_found,                                      
                                                                                                                  (n_not_found/len(match_ids))*100, n_not_found,
                                                                                                                  (n_not_available/len(match_ids))*100, n_not_available) )
+    
     ## fill non-one values with zeroes 
     df_features['match_obs']  = df_features['match_obs'].fillna(0)
+
+    ## final check - only gauges with a match remain 
+    for match_id in df_features['match'].unique():
+        check_sum = df_features[ (df_features['match'] == match_id)]
+        if not check_sum['match_obs'].sum() > 0:
+            df_features = df_features.drop(index = check_sum.index)
+
     return df_features 
 
 
