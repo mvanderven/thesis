@@ -218,7 +218,7 @@ print('{} simulations dropped - {} remaining for analysis \n'.format(n_drop, n_a
 
 #%% Signature calculation 
 
-calc_features = True 
+calc_features = False 
 
 if calc_features:
 
@@ -335,6 +335,9 @@ features_matched = utils.match_label(efas_feature_table, df_labels,
 ## index = ID, so save index 
 # features_matched.to_csv(features_labelled_fn) 
 
+# features_matched = pd.read_csv(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\training_data\labelled_features_20210310_buffer_2.csv",
+#                                index_col=0)
+
 #%% Calculate similarity vectors 
 
 similarity_vectors = utils.calc_similarity_vector(features_matched, 
@@ -344,9 +347,10 @@ similarity_vectors = utils.calc_similarity_vector(features_matched,
 
 #%% Save set 
 
-similarity_fn = gauge_data / 'similarity_vector_labelled_buffer_{}-{}'.format(buffer_size,
+similarity_fn = gauge_data / 'similarity_vector_labelled_buffer_{}-{}.csv'.format(buffer_size,
                                                                               datetime.datetime.today().strftime('%Y%m%d'))
 
+similarity_vectors.to_csv(similarity_fn)
 
 #%% Show total time duration 
 print("--- {:.2f}s seconds ---".format(time.time() - start_time_overall))
