@@ -340,15 +340,12 @@ features_matched = utils.match_label(efas_feature_table, df_labels,
 similarity_vectors = utils.calc_similarity_vector(features_matched, 
                                                   'match','is_gauge', 'match_obs',
                                                   feature_cols = cols_analysis,
-                                                  method = 'euclidian' )
+                                                   method = 'euclidian' )
 
-#%% Scale/normalize vectors  
+#%% Save set 
 
-
-#%% Subsample??? 
-
-
-#%% Save training set 
+similarity_fn = gauge_data / 'similarity_vector_labelled_buffer_{}-{}'.format(buffer_size,
+                                                                              datetime.datetime.today().strftime('%Y%m%d'))
 
 
 #%% Show total time duration 
