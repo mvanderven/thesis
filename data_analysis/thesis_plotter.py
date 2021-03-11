@@ -227,15 +227,15 @@ def display_cross_correlation(df, cols,
         square = True,
         annot = True,
         annot_kws={"size":4},
-        fmt = '.1g',
-        cbar=False
+        fmt = '.1g' #,
+        # cbar=False
         )
     
     ax.set_xticklabels(
         ax.get_xticklabels(),
         rotation = 60,
         horizontalalignment='right')
-            
+    plt.show()        
     return 
 
 
