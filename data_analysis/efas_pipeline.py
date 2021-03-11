@@ -56,7 +56,8 @@ gauge_file_names = gauge_data_dict[gauge_keys[0]]
 
 ## get a sub-sample of gauge_file_names 
 n_samples = 10 
-gauge_file_names = np.random.choice(gauge_file_names, n_samples) 
+if n_samples > 0:
+    gauge_file_names = np.random.choice(gauge_file_names, n_samples) 
 
 ## load data 
 gauge_data_grdc, meta_grdc = utils.read_gauge_data( gauge_file_names, dtype='grdc')
@@ -139,10 +140,11 @@ if not load_buffer_results:
     cell_size_efas = 5000       # m2 
     cell_size_glofas = 0.1      # degrees lat/lon
      
-    collect_efas, fn_save_results = utils.buffer_search(
+    # collect_efas, fn_save_results = utils.buffer_search(
+    collect_efas = utils.buffer_search(
                                        efas_time, gauge_time,
                                        cell_size_efas, cell_size_efas, buffer_size,
-                                       save_csv=True, save_dir = model_data)
+                                       save_csv=False, save_dir = model_data)
     
     print('Buffer search done \n')
 
@@ -174,7 +176,7 @@ collect_timeseries, collect_locations = thesis_signatures.reshape_data(gauge_tim
                                                                        var='dis24',
                                                                        T1 = end_date)
 
-print("--- {:.2f} minutes ---".format( (time.time() - start_time)/60.) )
+print("--- {:.2f} minutes ---\n\n".format( (time.time() - start_time)/60.) )
 
 #%% Show collected data
 print(collect_timeseries.head())
@@ -182,28 +184,33 @@ print(collect_timeseries.head())
 #%% Check for missing values in model simulation data 
 missing_series = collect_timeseries.columns[ collect_timeseries.isnull().any()].tolist() 
 
+collect_timeseries = collect_timeseries.drop(columns=missing_series) 
+collect_locations = collect_locations.drop(index=missing_series)
+
+n_drop = len(missing_series)
+
 #%% 
 
 ## minimum percentage of availabel data over period of interest 
-max_percentage = 80. 
-ts_max = len(collect_timeseries)
-n_drop = 0 
+# max_percentage = 80. 
+# ts_max = len(collect_timeseries)
+# n_drop = 0 
 
-for missing_ts in missing_series:
-    n_missing = collect_timeseries[missing_ts].isnull().sum() 
-    p_missing = (n_missing/ts_max)*100
+# for missing_ts in missing_series:
+#     n_missing = collect_timeseries[missing_ts].isnull().sum() 
+#     p_missing = (n_missing/ts_max)*100
         
-    if p_missing > max_percentage:
-        print('\tMissing percentage of {} is too large ( {}% ) - remove from analysis'.format(missing_ts, p_missing))
-        n_drop += 1 
+#     if p_missing > max_percentage:
+#         print('\tMissing percentage of {} is too large ( {}% ) - remove from analysis'.format(missing_ts, p_missing))
+#         n_drop += 1 
         
-        cols_ts = collect_timeseries.columns 
-        rows_loc = collect_locations.index 
+#         cols_ts = collect_timeseries.columns 
+#         rows_loc = collect_locations.index 
         
-        if missing_ts in cols_ts: 
-            collect_timeseries = collect_timeseries.drop(columns=[missing_ts])  
-        if missing_ts in rows_loc:
-            collect_locations = collect_locations.drop(index=[missing_ts])
+#         if missing_ts in cols_ts: 
+#             collect_timeseries = collect_timeseries.drop(columns=[missing_ts])  
+#         if missing_ts in rows_loc:
+#             collect_locations = collect_locations.drop(index=[missing_ts])
 
 n_after_drop = collect_timeseries.shape[1]
 print('{} simulations dropped - {} remaining for analysis \n'.format(n_drop, n_after_drop))
@@ -272,10 +279,10 @@ if len(missing_rows) >= 1:
     print('Remaining missing values: ', efas_feature_table[check_cols].isnull().sum().sum()  )
 
 #%% Save feature table values 
-features_fn = gauge_data / 'unlabelled_features_{}_buffer_{}.csv'.format( datetime.datetime.today().strftime('%Y%m%d'),
-                                                                        buffer_size)
-efas_feature_table.to_csv(features_fn)
-print('[INFO] features saved as csv:\n{}'.format(features_fn))                                                               
+# features_fn = gauge_data / 'unlabelled_features_{}_buffer_{}.csv'.format( datetime.datetime.today().strftime('%Y%m%d'),
+#                                                                         buffer_size)
+# efas_feature_table.to_csv(features_fn)
+# print('[INFO] features saved as csv:\n{}'.format(features_fn))                                                               
 
 #%% Display feature cross-correlation
 
@@ -323,13 +330,25 @@ features_matched = utils.match_label(efas_feature_table, df_labels,
                                      'updated_GRDC_ID', 'StationX', 'StationY')
 
 #%% 
-features_labelled_fn = gauge_data / 'labelled_features_{}_buffer_{}.csv'.format( datetime.datetime.today().strftime('%Y%m%d'),
-                                                                        buffer_size)
+# features_labelled_fn = gauge_data / 'labelled_features_{}_buffer_{}.csv'.format( datetime.datetime.today().strftime('%Y%m%d'),
+                                                                        # buffer_size)
 ## index = ID, so save index 
-features_matched.to_csv(features_labelled_fn) 
+# features_matched.to_csv(features_labelled_fn) 
 
-#%% TO DO: Calculate similarity vectors 
+#%% Calculate similarity vectors 
 
+similarity_vectors = utils.calc_similarity_vector(features_matched, 
+                                                  'match','is_gauge', 'match_obs',
+                                                  feature_cols = cols_analysis,
+                                                  method = 'euclidian' )
+
+#%% Scale/normalize vectors  
+
+
+#%% Subsample??? 
+
+
+#%% Save training set 
 
 
 #%% Show total time duration 

@@ -682,9 +682,41 @@ def match_label(df_features, df_match,
     return df_features 
 
 
+def calc_similarity_vector(df, gauge_id_col, type_col, label_col, feature_cols, method = 'euclidian'): 
+    
+    methods = ['euclidian'] # to implement??: ['cosine'] 
+    
+    assert method.lower() in methods, '[ERROR] selected method {} not in available methods: {}'.format(method.lower(), methods) 
+    
+    ### loop through df 
+    ### calculate distance to observation features for each potential match 
+    ### according to selected method (default = euclidian)
+    ### save similarity vectors in new dataframe 
+    df_SV = pd.DataFrame() 
+    
+    ## get unique identifiers  
+    gauge_ids = df[gauge_id_col].unique() 
+    
+    for gauge_id in gauge_ids: 
+        gauge_set = df[ df[gauge_id_col] == gauge_id] 
+        
+        obs_features = gauge_set[ gauge_set[type_col] == 1 ]
+        mod_features = gauge_set[ gauge_set[type_col] == 0 ]
+        
+        labels = mod_features[label_col]
+        ix = mod_features.index
+        
+        distance = ((mod_features[feature_cols].values - obs_features[feature_cols].values)**2)**0.5
+        
+        _df = pd.DataFrame(distance, columns=feature_cols) 
+        _df = _df.set_index(ix)
+        _df['target'] = labels 
+        
+        df_SV = df_SV.append(_df)
+    return df_SV
 
-
-
+def norm_scaler():
+    return 
 
 
 

@@ -697,22 +697,3 @@ def calc_features(collect_df, locations, features = feature_options, time_window
     print('[FINISH] calculating features ')
     return out_df 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
