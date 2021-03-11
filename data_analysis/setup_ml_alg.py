@@ -7,8 +7,7 @@ Created on Thu Mar 11 14:37:31 2021
 
 #%% load modules 
 
-import pandas as pd 
-# import numpy as np 
+import pandas as pd  
 from pathlib import Path 
 import seaborn as sns 
 import matplotlib.pyplot as plt 
@@ -18,7 +17,6 @@ from sklearn.metrics import classification_report, confusion_matrix, accuracy_sc
 from sklearn.model_selection import train_test_split 
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.linear_model import LogisticRegression
-# from sklearn.metrics import 
 
 #%% paths 
 
@@ -112,7 +110,8 @@ sns.heatmap( pd.DataFrame(confusion_matrix(y_train, y_hat_train)),
                     annot=True, cmap='binary')
 plt.ylabel('True class');
 plt.xlabel('Predicted class');
-plt.title('Training \n accuracy: {:.2f} precision: {:.2f} recall:  {:.2f} f1: {:.2f}'.format(train_acc,
+plt.title('Training (n={}) \n accuracy: {:.2f} precision: {:.2f} recall:  {:.2f} f1: {:.2f}'.format(len(y_train),
+                                                                                                    train_acc,
                                                                                                     train_prec,
                                                                                                     train_rec,
                                                                                                     train_f1));
@@ -122,14 +121,18 @@ sns.heatmap(  pd.DataFrame(confusion_matrix(y_val, y_hat_val)),
             annot=True, cmap='binary')
 plt.ylabel('True class');
 plt.xlabel('Predicted class');
-plt.title('Validation \n accuracy: {:.2f} precision: {:.2f} recall:  {:.2f} f1: {:.2f}'.format(val_acc,
-                                                                                                    val_prec,
-                                                                                                    val_rec,
-                                                                                                    val_f1));
+plt.title('Validation  (n={}) \n accuracy: {:.2f} precision: {:.2f} recall:  {:.2f} f1: {:.2f}'.format(len(y_val),
+                                                                                                       val_acc,
+                                                                                                       val_prec,
+                                                                                                       val_rec,
+                                                                                                       val_f1));
 
 plt.tight_layout() 
 plt.show()
 
+#%% Analyse weights ? 
+
+print(lr) 
 
 
 
