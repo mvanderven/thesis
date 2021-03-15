@@ -9,6 +9,7 @@ Created on Thu Mar 11 14:37:31 2021
 
 import pandas as pd  
 from pathlib import Path 
+import numpy as np 
 
 from sklearn.metrics import classification_report 
 from sklearn.model_selection import train_test_split 
@@ -31,16 +32,52 @@ print('Load dataset')
 print('-----'*10)
 print(df.head())
 
-#%% optional: subsample dataset to get balanced training/validation set 
+
+#%% Divide dataset based on number of gauges 
+## 70% for training
+## 15% for testing
+## 15% for validation 
+
+## To this end, first get unique gauge     
+idx = pd.Series(df.index.values).str.split('_', expand=True).values 
+## add as separate columns 
+df['gauge_id'] = idx[:,1]
+
+unique_gauges = np.unique(idx) 
+
+## check if all buffers contain one positive sample  
+for gauge in unique_gauges:
+    
+    check_df = df[df['gauge_id']==gauge]
+
+    ## if sum is smaller than one, wronglabels 
+    if check_df['target'].sum() < 0.5:        
+        df.drop(index=check_df.index, inplace=True)
+
+print(df.head())
+
+## update unique gauges 
+unique_gauges = df['gauge_id'].unique()
+
+#%% Determine gauges to be used in training and testing, or for validation 
+
+## further split train test into validation set 
+gauge_train_test, gauge_validation = train_test_split( unique_gauges, test_size = 0.15)
+
+df_train_test = df[ df['gauge_id'].isin( gauge_train_test)]
+df_validate = df[ df['gauge_id'].isin(gauge_validation)] #.drop('gauge_id', axis=1)
+
+#%% subsample train+test dataset to get balanced dataset 
 
 target_col = 'target'
-df_sampled = utils.subsample(df, target_col, n_frac = 1)
+df_sampled = utils.subsample(df_train_test, target_col, n_frac = 1)
 
-#%% split dataset into training and validation set 
+#%% split dataset into training, test and validation set 
 
-X_train, X_val, y_train, y_val = train_test_split( df_sampled.drop([target_col], axis=1), 
-                                                   df_sampled[target_col],
-                                                   test_size = 0.2)
+X_train, X_val, y_train, y_val = train_test_split( df_sampled.drop([ 'gauge_id', target_col], axis=1), 
+                                                    df_sampled[target_col],
+                                                    test_size = 0.2)
+
 
 #%% scale/normalize training set & apply to validation set 
 
@@ -83,7 +120,11 @@ utils.plot_confusion_matrix(y_val, y_hat_val, name = 'Test score' )
 
 #%% Validate results in buffer format 
 
-utils.buffer_validation(df, target_col, lr_model, sc)
+utils.buffer_validation(df_validate, target_col, lr_model, sc)
+
+#%% Compare with benchmark results 
+
+utils.benchmark_nearest_cell(df_validate, 'x', 'y', target_col)
 
 
 #%% Analyse coefficients 
