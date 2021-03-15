@@ -73,9 +73,9 @@ def buffer_validation(df, target_col, model, scaler):
     list_p1 = [] 
     
     ## get gauge ids     
-    idx = pd.Series(df.index.values).str.split('_', expand=True).values 
+    # idx = pd.Series(df.index.values).str.split('_', expand=True).values 
     ## add as separate columns 
-    df['gauge_id'] = idx[:,1]
+    # df['gauge_id'] = idx[:,1]
     
     for gauge_id in df['gauge_id'].unique():
         
@@ -109,6 +109,7 @@ def buffer_validation(df, target_col, model, scaler):
                 list_p1.append(max(p1))
 
             else:
+                ## create df to analyse results 
                 # buffer_df = pd.DataFrame({'y': y, 'y_hat': y_hat, 'p0': p0, 'p1': p1})
                 
                 ## check y_hat - see if other potential cells match 
@@ -136,8 +137,55 @@ def buffer_validation(df, target_col, model, scaler):
     return 
 
 
+def benchmark_nearest_cell(df_val, x_col, y_col, target_col): 
+    
+    n_correct = 0   
+    n_gauges = 0 
+    
+    df = df_val.copy()
+    
+    ## get gauge ids     
+    idx = pd.Series(df.index.values).str.split('_', expand=True).values 
+    ## add as separate columns 
+    df['gauge_id'] = idx[:,1] 
+    
+    ## add 'distance' column   
+    df['distance'] = ((df[x_col]**2) + (df[y_col]**2))**0.5
+    
+    ## create y_hat column for storing results 
+    target_col_hat = '{}_hat'.format(target_col)
+    df[target_col_hat] = 0 
+    
+    # ## loop through all single gauges 
+    for gauge_id in df['gauge_id'].unique():
+        
+        df_gauge = df[ df['gauge_id'] == gauge_id] 
+        y_gauge = df_gauge[target_col] 
+        
+        ## check if a match is found in the buffer 
+        if y_gauge.sum() > 0:
+            n_gauges += 1 
+            
+            ## get ix of smallest distance column  
+            y_hat = df_gauge['distance'].idxmin()
+            
+            ## set minimum value to 1 
+            df.loc[y_hat, target_col_hat ] = 1 
+            
+            ## get accuracy    
+            y = y_gauge.idxmax() 
+                
+            ## if correct, count as success 
+            if y == y_hat:
+                n_correct += 1
 
-
+    print()
+    print('-----'*10)  
+    print('Benchmark: naive nearest cell')      
+    print('Total found: {} ({:.2f}%)'.format( n_correct, (n_correct/n_gauges)*100) )
+    print('-----'*10)    
+    
+    return df 
 
 
 
