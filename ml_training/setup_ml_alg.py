@@ -109,7 +109,6 @@ print()
 print('-----'*10)
 print('Validation classification report')
 print('-----'*10)
-
 print(classification_report(y_val, y_hat_val)) 
 
 #%% Plot confusion matrix 
@@ -117,15 +116,14 @@ print(classification_report(y_val, y_hat_val))
 utils.plot_confusion_matrix(y_train, y_hat_train, name = 'Training score' )
 utils.plot_confusion_matrix(y_val, y_hat_val, name = 'Test score' )
 
-
 #%% Validate results in buffer format 
 
 utils.buffer_validation(df_validate, target_col, lr_model, sc)
 
 #%% Compare with benchmark results 
 
+## Nearest cell method outperforms LogisticRegression model 
 utils.benchmark_nearest_cell(df_validate, 'x', 'y', target_col)
-
 
 #%% Analyse coefficients 
 

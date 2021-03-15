@@ -130,9 +130,9 @@ def buffer_validation(df, target_col, model, scaler):
     print('-----'*10)        
     print('Total found: {} ({:.2f}%)'.format( n_correct, (n_correct/n_gauges)*100) )
     print('Found in guess-range: {} ({:.2f}%)'.format( n_guess, (n_guess/n_gauges)*100)  )
-    print('In total: {} ({:.2f}%) guessed - {} remaining'.format( n_total, 
-                                                                 (n_total/n_gauges)*100,
-                                                                 n_gauges-n_total))
+    print('In total: {}/{} ({:.2f}%) guessed'.format( n_total, 
+                                                       n_gauges,
+                                                       (n_total/n_gauges)*100))
     print('-----'*10)    
     return 
 
@@ -182,7 +182,7 @@ def benchmark_nearest_cell(df_val, x_col, y_col, target_col):
     print()
     print('-----'*10)  
     print('Benchmark: naive nearest cell')      
-    print('Total found: {} ({:.2f}%)'.format( n_correct, (n_correct/n_gauges)*100) )
+    print('Total found: {}/{} ({:.2f}%)'.format( n_correct, n_gauges, (n_correct/n_gauges)*100) )
     print('-----'*10)    
     
     return df 
