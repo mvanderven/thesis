@@ -9,14 +9,12 @@ Created on Thu Mar 11 14:37:31 2021
 
 import pandas as pd  
 from pathlib import Path 
-import seaborn as sns 
-import matplotlib.pyplot as plt 
 
-
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import classification_report #, confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
 from sklearn.model_selection import train_test_split 
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.linear_model import LogisticRegression
+
+import ml_utils as utils 
 
 #%% paths 
 
@@ -39,22 +37,19 @@ print(df.head())
 
 target_col = 'target'
 
-if subsample is True:
-    print('Subsample dataset') 
-    df_1 = df[ df[target_col] == 1] 
-    df_0 = df[ df[target_col] != 1] 
-    
-    ## get length of values = 1 
-    n1 = len(df_1)
-    
-    ## combine all 1 values with an equal number of 0's 
-    df = df_1.append( df_0.sample(n=n1)  )
-   
+if subsample:
+    df_sampled = utils.subsample(df, target_col, n_frac = 10)
+
 #%% split dataset into training and validation set 
 
-X_train, X_val, y_train, y_val = train_test_split( df.drop([target_col], axis=1),
-                                                   df[target_col],
-                                                   test_size = 0.2)
+if subsample:
+    X_train, X_val, y_train, y_val = train_test_split( df_sampled.drop([target_col], axis=1), 
+                                                       df_sampled[target_col],
+                                                       test_size = 0.2)
+else:
+     X_train, X_val, y_train, y_val = train_test_split( df.drop([target_col], axis=1), 
+                                                        df[target_col],
+                                                        test_size = 0.2)   
 
 #%% scale/normalize training set & apply to validation set 
 
@@ -67,20 +62,21 @@ X_train = sc.fit_transform(X_train)
 X_val = sc.transform(X_val)
 
 #%% train model 
+print()
+print('-----'*10)
+print('Train logistic regressor')
+print('-----'*10)
 
-## model setup 
-lr = LogisticRegression()
 
-## train model 
-lr.fit(X_train, y_train) 
+lr_model = utils.train_logistic_regressor(X_train, y_train)
 
 ## training performance 
-y_hat_train = lr.predict(X_train)
+y_hat_train = lr_model.predict(X_train)
 
 ## validation performance 
-y_hat_val = lr.predict(X_val)
+y_hat_val = lr_model.predict(X_val)
 
-#%% analyse performance 
+#%% Analyse performance 
 
 print()
 print('-----'*10)
@@ -89,50 +85,37 @@ print('-----'*10)
 
 print(classification_report(y_val, y_hat_val)) 
 
-#%% 
+#%% Plot confusion matrix 
 
-fig = plt.figure(figsize=(12,8)) 
-
-
-val_acc = accuracy_score(y_val, y_hat_val)
-val_prec = precision_score(y_val, y_hat_val)
-val_rec = recall_score(y_val, y_hat_val) 
-val_f1 = f1_score(y_val, y_hat_val)
-
-train_acc = accuracy_score(y_train, y_hat_train)
-train_prec = precision_score(y_train, y_hat_train)
-train_rec = recall_score(y_train, y_hat_train) 
-train_f1 = f1_score(y_train, y_hat_train)
+utils.plot_confusion_matrix(y_train, y_hat_train, name = 'Training score' )
+utils.plot_confusion_matrix(y_val, y_hat_val, name = 'Test score' )
 
 
-plt.subplot(211)
-sns.heatmap( pd.DataFrame(confusion_matrix(y_train, y_hat_train)),
-                    annot=True, cmap='binary')
-plt.ylabel('True class');
-plt.xlabel('Predicted class');
-plt.title('Training (n={}) \n accuracy: {:.2f} precision: {:.2f} recall:  {:.2f} f1: {:.2f}'.format(len(y_train),
-                                                                                                    train_acc,
-                                                                                                    train_prec,
-                                                                                                    train_rec,
-                                                                                                    train_f1));
+#%% Validate results in buffer format 
 
-plt.subplot(212)
-sns.heatmap(  pd.DataFrame(confusion_matrix(y_val, y_hat_val)),
-            annot=True, cmap='binary')
-plt.ylabel('True class');
-plt.xlabel('Predicted class');
-plt.title('Validation  (n={}) \n accuracy: {:.2f} precision: {:.2f} recall:  {:.2f} f1: {:.2f}'.format(len(y_val),
-                                                                                                       val_acc,
-                                                                                                       val_prec,
-                                                                                                       val_rec,
-                                                                                                       val_f1));
+utils.buffer_validation(df, target_col, lr_model, sc)
 
-plt.tight_layout() 
-plt.show()
 
-#%% Analyse weights ? 
+#%% Analyse coefficients 
 
-print(lr) 
+lr_coefs = lr_model.coef_ 
+coef_names = df.drop([target_col, 'gauge_id'], axis=1).columns
+
+df_coef = pd.DataFrame(lr_coefs[0], index = coef_names, columns=['Coefficients'])
+
+# print(df_coef)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
