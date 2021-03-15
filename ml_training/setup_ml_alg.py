@@ -22,7 +22,7 @@ training_dir = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\trai
 
 training_set = training_dir / "similarity_vector_labelled_buffer_2-20210311.csv"
 
-subsample = True
+
 
 #%% load dataset 
 
@@ -36,20 +36,13 @@ print(df.head())
 #%% optional: subsample dataset to get balanced training/validation set 
 
 target_col = 'target'
-
-if subsample:
-    df_sampled = utils.subsample(df, target_col, n_frac = 10)
+df_sampled = utils.subsample(df, target_col, n_frac = 1)
 
 #%% split dataset into training and validation set 
 
-if subsample:
-    X_train, X_val, y_train, y_val = train_test_split( df_sampled.drop([target_col], axis=1), 
-                                                       df_sampled[target_col],
-                                                       test_size = 0.2)
-else:
-     X_train, X_val, y_train, y_val = train_test_split( df.drop([target_col], axis=1), 
-                                                        df[target_col],
-                                                        test_size = 0.2)   
+X_train, X_val, y_train, y_val = train_test_split( df_sampled.drop([target_col], axis=1), 
+                                                   df_sampled[target_col],
+                                                   test_size = 0.2)
 
 #%% scale/normalize training set & apply to validation set 
 
@@ -66,7 +59,6 @@ print()
 print('-----'*10)
 print('Train logistic regressor')
 print('-----'*10)
-
 
 lr_model = utils.train_logistic_regressor(X_train, y_train)
 

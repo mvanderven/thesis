@@ -40,7 +40,7 @@ def plot_confusion_matrix(y, y_hat, name = 'Validation score' ):
                     annot=True, cmap='binary', cbar=False)
     plt.ylabel('True class');
     plt.xlabel('Predicted class');
-    plt.title('{} (n={}) \n accuracy: {:.2f} precision: {:.2f} recall:  {:.2f} f1: {:.2f}'.format(name,
+    plt.title('{} (n={}) \n accuracy: {:.2f} || precision: {:.2f} || recall: {:.2f} || f1: {:.2f}'.format(name,
                                                                                                   len(y),
                                                                                                   acc,
                                                                                                   prec,
@@ -55,7 +55,7 @@ def plot_confusion_matrix(y, y_hat, name = 'Validation score' ):
 def train_logistic_regressor(X_train, y_train):
     
     ## model setup 
-    lr = LogisticRegression(multi_class='‘multinomial’')
+    lr = LogisticRegression(multi_class='multinomial')
     
     ## train model 
     lr.fit(X_train, y_train) 
@@ -69,6 +69,8 @@ def buffer_validation(df, target_col, model, scaler):
     n_gauges = 0 
     n_correct = 0 
     n_guess = 0 
+    
+    list_p1 = [] 
     
     ## get gaueg ids     
     idx = pd.Series(df.index.values).str.split('_', expand=True).values 
@@ -91,6 +93,7 @@ def buffer_validation(df, target_col, model, scaler):
             n_gauges += 1 
             
             ## predicts too many 1s, but can be used to analyse potential matches
+            ## predicts multiple potential cell matches 
             y_hat = model.predict(X) 
             
             y_prob = model.predict_proba(X) 
@@ -98,22 +101,37 @@ def buffer_validation(df, target_col, model, scaler):
             y_hat_prob = np.zeros(len(y)) 
             y_hat_prob[ np.argmax(p1) ] = 1 
             
-                    
+            
+            ## check if highest p1 is correct
             if np.all(y==y_hat_prob):
                 n_correct += 1 
-            else:
-                print(pd.DataFrame({'y': y, 'y_hat': y_hat, 'p0': p0, 'p1': p1})) 
                 
+                list_p1.append(max(p1))
+
+            else:
+                # buffer_df = pd.DataFrame({'y': y, 'y_hat': y_hat, 'p0': p0, 'p1': p1})
+                
+                ## check y_hat - see if other potential cells match 
                 ix_y_hat = np.where(y_hat==1)[0]
 
                 if np.argmax(y) in ix_y_hat:
                     n_guess += 1
+                    
+                    ## show all results in y_hat == 1 
+                    # print( buffer_df[buffer_df['y_hat']==1.] )
+                
+                ## show wrong results 
+                # else:
+                    # print(buffer_df)
 
-    
+    n_total = n_correct + n_guess    
     print()
     print('-----'*10)        
     print('Total found: {} ({:.2f}%)'.format( n_correct, (n_correct/n_gauges)*100) )
     print('Found in guess-range: {} ({:.2f}%)'.format( n_guess, (n_guess/n_gauges)*100)  )
+    print('In total: {} ({:.2f}%) guessed - {} remaining'.format( n_total, 
+                                                                 (n_total/n_gauges)*100,
+                                                                 n_gauges-n_total))
     print('-----'*10)    
     return 
 
