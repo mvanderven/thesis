@@ -43,6 +43,7 @@ print('File names loaded \n')
 print('Load EFAS data')
 # efas_dir = model_data_dict[keys_efas[1]] ## three months 
 efas_dir = model_data_dict[keys_efas[0]]   ## one year 
+
 ds_efas = utils.open_efas(efas_dir, dT='06', do_resample_24h = True)
 print('EFAS data loaded \n')
 
@@ -78,7 +79,6 @@ print(gauge_data_grdc.head())
 #%% Set up time boundaries 
 
 print('Execute time search')
-## set up time of search query 
 start_date = '1991-01-01'
 end_date = '1991-12-31'
 
@@ -94,6 +94,7 @@ time_search = {
             }}
 
 efas_time = utils.search_ds(ds_efas, time_search, return_df = False)
+
 print('Time search done \n')
 
 #%% Apply time search to gauge data 
@@ -105,6 +106,7 @@ gauge_time = gauge_data_grdc[ (gauge_data_grdc['date'] >= T0) & (gauge_data_grdc
 ## check if nan-values for gauges 
 ## in considered time period 
 ## if total gauge period is nan - gauge is thus dropped 
+
 gauge_time = gauge_time.dropna(subset=['value'])
 
 ## give overview of stations dropped 
@@ -130,7 +132,7 @@ load_buffer_results = False
 
 #%% Buffer analysis in model data 
 
-## do this per year --> append results per defined period 
+## do this per year --> append results per defined period (for PC runs?)
 
 if not load_buffer_results:
     
@@ -139,7 +141,7 @@ if not load_buffer_results:
     buffer_size = 2
     cell_size_efas = 5000       # m2 
     cell_size_glofas = 0.1      # degrees lat/lon
-     
+
     # collect_efas, fn_save_results = utils.buffer_search(
     collect_efas = utils.buffer_search(
                                        efas_time, gauge_time,
@@ -166,7 +168,8 @@ print(collect_efas.head())
 
 ## combine efas and gauge time series to
 ## a df with unique timeseries in each column 
-## and a df with coordinates of each gauge + iterations 
+
+## and a second df with coordinates of each gauge + iterations 
 print('Combine gauge and model timeseries')
 start_time = time.time() 
 
@@ -179,6 +182,7 @@ collect_timeseries, collect_locations = thesis_signatures.reshape_data(gauge_tim
 print("--- {:.2f} minutes ---\n\n".format( (time.time() - start_time)/60.) )
 
 #%% Show collected data
+
 print(collect_timeseries.head())
 
 #%% Check for missing values in model simulation data 
@@ -192,25 +196,27 @@ n_drop = len(missing_series)
 #%% 
 
 ## minimum percentage of availabel data over period of interest 
-# max_percentage = 80. 
-# ts_max = len(collect_timeseries)
-# n_drop = 0 
+max_percentage = 80. 
+ts_max = len(collect_timeseries)
+n_drop = 0 
 
-# for missing_ts in missing_series:
-#     n_missing = collect_timeseries[missing_ts].isnull().sum() 
-#     p_missing = (n_missing/ts_max)*100
+for missing_ts in missing_series:
+    n_missing = collect_timeseries[missing_ts].isnull().sum() 
+    p_missing = (n_missing/ts_max)*100
+    
+    print(p_missing)
         
-#     if p_missing > max_percentage:
-#         print('\tMissing percentage of {} is too large ( {}% ) - remove from analysis'.format(missing_ts, p_missing))
-#         n_drop += 1 
+    # if p_missing > max_percentage:
+    #     print('\tMissing percentage of {} is too large ( {}% ) - remove from analysis'.format(missing_ts, p_missing))
+    #     n_drop += 1 
         
-#         cols_ts = collect_timeseries.columns 
-#         rows_loc = collect_locations.index 
+    #     cols_ts = collect_timeseries.columns 
+    #     rows_loc = collect_locations.index 
         
-#         if missing_ts in cols_ts: 
-#             collect_timeseries = collect_timeseries.drop(columns=[missing_ts])  
-#         if missing_ts in rows_loc:
-#             collect_locations = collect_locations.drop(index=[missing_ts])
+    #     if missing_ts in cols_ts: 
+    #         collect_timeseries = collect_timeseries.drop(columns=[missing_ts])  
+    #     if missing_ts in rows_loc:
+    #         collect_locations = collect_locations.drop(index=[missing_ts])
 
 n_after_drop = collect_timeseries.shape[1]
 print('{} simulations dropped - {} remaining for analysis \n'.format(n_drop, n_after_drop))
@@ -350,7 +356,7 @@ similarity_vectors = utils.calc_similarity_vector(features_matched,
 similarity_fn = gauge_data / 'similarity_vector_labelled_buffer_{}-{}.csv'.format(buffer_size,
                                                                               datetime.datetime.today().strftime('%Y%m%d'))
 
-similarity_vectors.to_csv(similarity_fn)
+# similarity_vectors.to_csv(similarity_fn)
 
 #%% Show total time duration 
 print("--- {:.2f}s seconds ---".format(time.time() - start_time_overall))
