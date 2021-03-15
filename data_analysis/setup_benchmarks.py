@@ -31,7 +31,6 @@ using the following methods:
 Method 1
 - labelled locations 
 - smallest X and Y 
-
 OR 
 - load x-array 
 - extract coordinates of nearest cell 
@@ -40,7 +39,7 @@ OR
 Metod 2 
 - labelled locations 
 - timeseries from cell within buffer 
-
+- calc RMSE over timeseries
 '''
 
 
@@ -106,7 +105,8 @@ def benchmark_nearest_cell(df, x_col, y_col, target_col):
                 n_correct += 1
 
     print()
-    print('-----'*10)        
+    print('-----'*10)  
+    print('Benchmark: naive nearest cell')      
     print('Total found: {} ({:.2f}%)'.format( n_correct, (n_correct/n_gauges)*100) )
     print('-----'*10)    
     
@@ -177,7 +177,8 @@ def benchmark_rmse(df_timeseries, df_locations, df_labels, T0 = '1991-01-01', T1
             df_benchmark = df_benchmark.append(_df)
     
     print()
-    print('-----'*10)        
+    print('-----'*10) 
+    print('Benchmark: naive min(RMSE')            
     print('Total found: {} ({:.2f}%)'.format( n_correct, (n_correct/n_gauges)*100) )
     print('-----'*10)      
     
