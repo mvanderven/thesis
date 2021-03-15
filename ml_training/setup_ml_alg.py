@@ -10,7 +10,7 @@ Created on Thu Mar 11 14:37:31 2021
 import pandas as pd  
 from pathlib import Path 
 
-from sklearn.metrics import classification_report #, confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import classification_report 
 from sklearn.model_selection import train_test_split 
 from sklearn.preprocessing import MinMaxScaler
 
@@ -21,8 +21,6 @@ import ml_utils as utils
 training_dir = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\training_data")
 
 training_set = training_dir / "similarity_vector_labelled_buffer_2-20210311.csv"
-
-
 
 #%% load dataset 
 

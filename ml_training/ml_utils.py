@@ -72,7 +72,7 @@ def buffer_validation(df, target_col, model, scaler):
     
     list_p1 = [] 
     
-    ## get gaueg ids     
+    ## get gauge ids     
     idx = pd.Series(df.index.values).str.split('_', expand=True).values 
     ## add as separate columns 
     df['gauge_id'] = idx[:,1]
