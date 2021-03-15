@@ -56,10 +56,10 @@ start_time = time.time()
 gauge_file_names = gauge_data_dict[gauge_keys[0]] 
 
 ## get a sub-sample of gauge_file_names 
-n_samples = 10 
+n_samples = 0 
 if n_samples > 0:
     gauge_file_names = np.random.choice(gauge_file_names, n_samples) 
-
+    
 ## load data 
 gauge_data_grdc, meta_grdc = utils.read_gauge_data( gauge_file_names, dtype='grdc')
 
@@ -78,7 +78,6 @@ print(gauge_data_grdc.head())
 
 #%% Set up time boundaries 
 
-print('Execute time search')
 start_date = '1991-01-01'
 end_date = '1991-12-31'
 
@@ -86,6 +85,8 @@ T0 = datetime.datetime.strptime(start_date, '%Y-%m-%d').strftime('%Y-%m-%d')
 T1 = datetime.datetime.strptime(end_date, '%Y-%m-%d').strftime('%Y-%m-%d') 
 
 #%% EFAS time search 
+
+print('Execute time search')
 
 time_search = {
     'time': {
@@ -128,19 +129,17 @@ gauge_locs = updated_gauge_locs
 
 #%% Load or create buffer 
 
-load_buffer_results = False
+load_buffer_results = True
 
-#%% Buffer analysis in model data 
-
-## do this per year --> append results per defined period (for PC runs?)
+buffer_size = 2
+cell_size_efas = 5000       # m2 
+cell_size_glofas = 0.1      # degrees lat/lon
 
 if not load_buffer_results:
-    
+    ## do this per year --> append results per defined period (for PC runs?)
     print('Start buffer search\n')
     
-    buffer_size = 2
-    cell_size_efas = 5000       # m2 
-    cell_size_glofas = 0.1      # degrees lat/lon
+
 
     # collect_efas, fn_save_results = utils.buffer_search(
     collect_efas = utils.buffer_search(
@@ -150,11 +149,9 @@ if not load_buffer_results:
     
     print('Buffer search done \n')
 
-#%% Load previously created buffer results 
-
 if load_buffer_results: 
     print('Load buffer results \n')
-    fn_save_step = model_data / "buffer_search_20210309_buffer_size_15.csv"
+    fn_save_step = model_data / "buffer_search_20210310_buffer_size_2.csv"
     collect_efas = pd.read_csv(fn_save_step).astype({'match_gauge':'str'})
 
 #%% Show buffer results 
@@ -185,46 +182,32 @@ print("--- {:.2f} minutes ---\n\n".format( (time.time() - start_time)/60.) )
 
 print(collect_timeseries.head())
 
-#%% Check for missing values in model simulation data 
+#%% Remove missing values in model simulation data 
 missing_series = collect_timeseries.columns[ collect_timeseries.isnull().any()].tolist() 
 
 collect_timeseries = collect_timeseries.drop(columns=missing_series) 
 collect_locations = collect_locations.drop(index=missing_series)
 
 n_drop = len(missing_series)
-
-#%% 
-
-## minimum percentage of availabel data over period of interest 
-max_percentage = 80. 
-ts_max = len(collect_timeseries)
-n_drop = 0 
-
-for missing_ts in missing_series:
-    n_missing = collect_timeseries[missing_ts].isnull().sum() 
-    p_missing = (n_missing/ts_max)*100
-    
-    print(p_missing)
-        
-    # if p_missing > max_percentage:
-    #     print('\tMissing percentage of {} is too large ( {}% ) - remove from analysis'.format(missing_ts, p_missing))
-    #     n_drop += 1 
-        
-    #     cols_ts = collect_timeseries.columns 
-    #     rows_loc = collect_locations.index 
-        
-    #     if missing_ts in cols_ts: 
-    #         collect_timeseries = collect_timeseries.drop(columns=[missing_ts])  
-    #     if missing_ts in rows_loc:
-    #         collect_locations = collect_locations.drop(index=[missing_ts])
-
 n_after_drop = collect_timeseries.shape[1]
 print('{} simulations dropped - {} remaining for analysis \n'.format(n_drop, n_after_drop))
 
 
+#%% Save cleaned up timeseries and location dataframes 
+
+fn_timeseries = model_data / 'collect_ts_obs_mod_{}_{}.csv'.format( datetime.datetime.today().strftime('%Y%m%d'), 
+                                                                    buffer_size) 
+
+fn_locations = model_data / 'collect_loc_obs_mod_{}_{}.csv'.format( datetime.datetime.today().strftime('%Y%m%d'),
+                                                                    buffer_size)
+
+# collect_timeseries.to_csv(fn_timeseries) 
+# collect_locations.to_csv(fn_locations)
+
+
 #%% Signature calculation 
 
-calc_features = False 
+calc_features = True 
 
 if calc_features:
 
@@ -251,9 +234,9 @@ if calc_features:
                                                          n_cross = [0, 1],
                                                          T_end = end_date)
 
-# if not calc_features: 
-#     efas_feature_table_fn = gauge_data / "unlabelled_features_20210310_buffer_15.csv" 
-#     efas_feature_table = pd.read_csv(efas_feature_table_fn) 
+if not calc_features: 
+    efas_feature_table_fn = gauge_data / "unlabelled_features_20210310_buffer_2.csv" 
+    efas_feature_table = pd.read_csv(efas_feature_table_fn) 
 
 #%% Show results signature calculation 
 print(efas_feature_table.head())
@@ -313,7 +296,7 @@ fig = plotter.display_cross_correlation(efas_feature_table, cols_analysis)
 
 
 #%%  Load labelled dataset 
-labelled_fn = gauge_data / "grdc_efas_selection_20210309-1.csv" 
+labelled_fn = gauge_data / "V0-grdc_efas_selection_20210309-1.csv" 
 df_labels = pd.read_csv(labelled_fn)
 
 ### COLUMNS OF INTEREST 
@@ -336,14 +319,14 @@ features_matched = utils.match_label(efas_feature_table, df_labels,
                                      'updated_GRDC_ID', 'StationX', 'StationY')
 
 #%% 
-# features_labelled_fn = gauge_data / 'labelled_features_{}_buffer_{}.csv'.format( datetime.datetime.today().strftime('%Y%m%d'),
-                                                                        # buffer_size)
+features_labelled_fn = gauge_data / 'labelled_features_{}_buffer_{}.csv'.format( datetime.datetime.today().strftime('%Y%m%d'),
+                                                                        buffer_size)
 ## index = ID, so save index 
-# features_matched.to_csv(features_labelled_fn) 
+features_matched.to_csv(features_labelled_fn) 
 
-# features_matched = pd.read_csv(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\training_data\labelled_features_20210310_buffer_2.csv",
-#                                index_col=0)
-
+load_fn = gauge_data / "labelled_features_20210310_buffer_2.csv"
+features_matched = pd.read_csv(load_fn, index_col=0)
+                                
 #%% Calculate similarity vectors 
 
 similarity_vectors = utils.calc_similarity_vector(features_matched, 
