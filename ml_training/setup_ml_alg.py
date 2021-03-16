@@ -10,6 +10,7 @@ Created on Thu Mar 11 14:37:31 2021
 import pandas as pd  
 from pathlib import Path 
 import numpy as np 
+import matplotlib.pyplot as plt
 
 from sklearn.metrics import classification_report 
 from sklearn.model_selection import train_test_split 
@@ -32,6 +33,9 @@ print('Load dataset')
 print('-----'*10)
 print(df.head())
 
+
+#%% Test: drop features
+# df.drop(columns=['lat', 'lon'], inplace=True)
 
 #%% Divide dataset based on number of gauges 
 ## 70% for training
@@ -118,12 +122,19 @@ utils.plot_confusion_matrix(y_val, y_hat_val, name = 'Test score' )
 
 #%% Validate results in buffer format 
 
-utils.buffer_validation(df_validate, target_col, lr_model, sc)
+df_val, val_true, val_guess, val_false = utils.buffer_validation(df_validate, target_col, lr_model, sc)
 
 #%% Compare with benchmark results 
 
 ## Nearest cell method outperforms LogisticRegression model 
-utils.benchmark_nearest_cell(df_validate, 'x', 'y', target_col)
+df_bench, bench_true, bench_false = utils.benchmark_nearest_cell(df_validate, 'x', 'y', target_col)
+
+#%% Show confusion plots for validation
+
+utils.plot_confusion_matrix(df_val['target'], df_val['y_hat'], name = 'Validation score' )
+utils.plot_confusion_matrix(df_val['target'], df_val['y_hat_prob'], name = 'Validation proba score' )
+# utils.plot_confusion_matrix(df_bench['target'], df_bench['target_hat'], name = 'Benchmark score' )
+
 
 #%% Analyse coefficients 
 
@@ -131,14 +142,18 @@ lr_coefs = lr_model.coef_
 coef_names = df.drop([target_col, 'gauge_id'], axis=1).columns
 
 df_coef = pd.DataFrame(lr_coefs[0], index = coef_names, columns=['Coefficients'])
+print()
+print('-----'*10)
+print('Logistic regression coefficients')
+print('-----'*10)
+print(df_coef)
 
-# print(df_coef)
+#%% Show validation results in a grid view 
 
-
-
-
-
-
+utils.grid_viewer(df_val, 'target', 'y_hat', gauge_ids = val_true, plot_title = 'Validation true')
+utils.grid_viewer(df_val, 'target', 'y_hat', gauge_ids = val_guess, plot_title = 'Validation guess')
+utils.grid_viewer(df_val, 'target', 'y_hat', gauge_ids = val_false, plot_title = 'Validation false')
+# utils.grid_viewer(df_bench, 'target', 'target_hat', gauge_ids = bench_false, plot_title = 'Benchmark false')
 
 
 
