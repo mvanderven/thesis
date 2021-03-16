@@ -10,7 +10,6 @@ Created on Thu Mar 11 14:37:31 2021
 import pandas as pd  
 from pathlib import Path 
 import numpy as np 
-import matplotlib.pyplot as plt
 
 from sklearn.metrics import classification_report 
 from sklearn.model_selection import train_test_split 
@@ -20,7 +19,11 @@ import ml_utils as utils
 
 #%% paths 
 
-training_dir = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\training_data")
+home_dir = Path.home()
+
+## set data paths 
+model_dir = home_dir / Path(r"Documents\Master EE\Year 4\Thesis\data\model_data")
+training_dir = home_dir / Path(r"Documents\Master EE\Year 4\Thesis\data\training_data")
 
 training_set = training_dir / "similarity_vector_labelled_buffer_2-20210311.csv"
 
@@ -114,27 +117,39 @@ print('-----'*10)
 print('Validation classification report')
 print('-----'*10)
 print(classification_report(y_val, y_hat_val)) 
+print('-----'*10)
 
 #%% Plot confusion matrix 
 
-utils.plot_confusion_matrix(y_train, y_hat_train, name = 'Training score' )
-utils.plot_confusion_matrix(y_val, y_hat_val, name = 'Test score' )
+# utils.plot_confusion_matrix(y_train, y_hat_train, name = 'Training score' )
+# utils.plot_confusion_matrix(y_val, y_hat_val, name = 'Test score' )
 
 #%% Validate results in buffer format 
 
 df_val, val_true, val_guess, val_false = utils.buffer_validation(df_validate, target_col, lr_model, sc)
 
-#%% Compare with benchmark results 
+#%% Benchmark Nearest Cell 
 
 ## Nearest cell method outperforms LogisticRegression model 
-df_bench, bench_true, bench_false = utils.benchmark_nearest_cell(df_validate, 'x', 'y', target_col)
+df_nc, nc_true, nc_false = utils.benchmark_nearest_cell(df_validate, 'x', 'y', target_col)
+
+#%% Benchmark RMSE 
+
+## load data for min(RMSE)
+timeseries_fn = model_dir / "collect_ts_obs_mod_20210315_2.csv"
+locations_fn =  model_dir / "collect_loc_obs_mod_20210315_2.csv"
+df_ts = pd.read_csv(timeseries_fn, index_col=0) 
+df_loc = pd.read_csv(locations_fn, index_col=0)
+
+## Algorithm and nearest cell benchmark outperfrom RMSE
+df_rmse, rmse_true, rmse_false = utils.benchmark_rmse(df_ts, df_loc, df_validate) #, T1 = '1991-12-31')
 
 #%% Show confusion plots for validation
 
-utils.plot_confusion_matrix(df_val['target'], df_val['y_hat'], name = 'Validation score' )
-utils.plot_confusion_matrix(df_val['target'], df_val['y_hat_prob'], name = 'Validation proba score' )
-# utils.plot_confusion_matrix(df_bench['target'], df_bench['target_hat'], name = 'Benchmark score' )
-
+# utils.plot_confusion_matrix(df_val['target'], df_val['y_hat'], name = 'Validation score' )
+# utils.plot_confusion_matrix(df_val['target'], df_val['y_hat_prob'], name = 'Validation proba score' )
+# utils.plot_confusion_matrix(df_nc['target'], df_nc['target_hat'], name = 'Benchmark nearest cell score' )
+# utils.plot_confusion_matrix(df_rmse['y'], df_rmse['y_hat'], name = 'Benchmark RMSE score' )
 
 #%% Analyse coefficients 
 
@@ -142,23 +157,26 @@ lr_coefs = lr_model.coef_
 coef_names = df.drop([target_col, 'gauge_id'], axis=1).columns
 
 df_coef = pd.DataFrame(lr_coefs[0], index = coef_names, columns=['Coefficients'])
-print()
-print('-----'*10)
-print('Logistic regression coefficients')
-print('-----'*10)
-print(df_coef)
+# print()
+# print('-----'*10)
+# print('Logistic regression coefficients')
+# print('-----'*10)
+# print(df_coef)
 
 #%% Show validation results in a grid view 
 
-utils.grid_viewer(df_val, 'target', 'y_hat', gauge_ids = val_true, plot_title = 'Validation true')
-utils.grid_viewer(df_val, 'target', 'y_hat', gauge_ids = val_guess, plot_title = 'Validation guess')
-utils.grid_viewer(df_val, 'target', 'y_hat', gauge_ids = val_false, plot_title = 'Validation false')
-# utils.grid_viewer(df_bench, 'target', 'target_hat', gauge_ids = bench_false, plot_title = 'Benchmark false')
+# utils.grid_viewer(df_val, 'target', 'y_hat', gauge_ids = val_true, plot_title = 'Validation true')
+# utils.grid_viewer(df_val, 'target', 'y_hat', gauge_ids = val_guess, plot_title = 'Validation guess')
+# utils.grid_viewer(df_val, 'target', 'y_hat', gauge_ids = val_false, plot_title = 'Validation false')
+
+# utils.grid_viewer(df_nc, 'target', 'target_hat', gauge_ids = nc_true, plot_title = 'Benchmark nearest cell true')
+# utils.grid_viewer(df_nc, 'target', 'target_hat', gauge_ids = nc_false, plot_title = 'Benchmark nearest cell false')
+
+# utils.grid_viewer(df_rmse, 'y', 'y_hat', gauge_ids = rmse_true, plot_title = 'Benchmark RMSE true')
+# utils.grid_viewer(df_rmse, 'y', 'y_hat', gauge_ids = rmse_false, plot_title = 'Benchmark RMSE false')
 
 
-
-
-
+#%% 
 
 
 

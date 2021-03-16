@@ -12,6 +12,7 @@ import numpy as np
 
 from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import mean_squared_error 
 
 
 def subsample(df, target_col, target_value = 1., n_frac = 1.):
@@ -123,34 +124,35 @@ def buffer_validation(df, target_col, model, scaler):
             if np.all(y==y_hat_prob):
                 n_correct += 1 
                 id_true.append(gauge_id)
+                n_guess += 1 
                 
             else:
                 ## create df to analyse results 
-                # buffer_df = pd.DataFrame({'y': y, 'y_hat': y_hat, 'p0': p0, 'p1': p1})
+                buffer_df = pd.DataFrame({'y': y, 'y_hat': y_hat, 'p0': p0, 'p1': p1})
                 
                 ## check y_hat - see if other potential cells match 
-                ix_y_hat = np.where(y_hat==1)[0]
+                ix_y_hat = np.where(y_hat==1)[0] 
 
                 if np.argmax(y) in ix_y_hat:
                     n_guess += 1 
                     id_guess.append(gauge_id)
                     
                     ## show all results in y_hat == 1 
-                    # print( buffer_df[buffer_df['y_hat']==1.] )      
+                    print( buffer_df[buffer_df['y_hat']==1.] )      
                                 
                 ## wrong results 
                 else:
                     id_false.append(gauge_id)
-                    # print(buffer_df)
-
-    n_total = n_correct + n_guess    
+                    print(buffer_df)
+ 
     print()
-    print('-----'*10)        
+    print('-----'*10)    
+    print('Logistic Regression')    
     print('Total found: {}/{} ({:.2f}%)'.format( n_correct, n_gauges, (n_correct/n_gauges)*100) )
     print('Found in guess-range: {}/{} ({:.2f}%)'.format( n_guess, n_gauges, (n_guess/n_gauges)*100)  )
-    print('In total: {}/{} ({:.2f}%) guessed'.format( n_total, 
-                                                       n_gauges,
-                                                       (n_total/n_gauges)*100))
+    print('In total: {}/{} ({:.2f}%) guessed'.format( n_guess, 
+                                                      n_gauges,
+                                                      (n_guess/n_gauges)*100))
     print('-----'*10)    
     return return_df, id_true, id_guess, id_false
 
@@ -168,10 +170,11 @@ def benchmark_nearest_cell(df_val, x_col, y_col, target_col):
     ## copy input data for output 
     df = df_val.copy()
     
-    ## get gauge ids     
-    idx = pd.Series(df.index.values).str.split('_', expand=True).values 
-    ## add as separate columns 
-    df['gauge_id'] = idx[:,1] 
+    if not 'gauge_id' in df.columns:
+        # get gauge ids     
+        idx = pd.Series(df.index.values).str.split('_', expand=True).values 
+        # add as separate columns 
+        df['gauge_id'] = idx[:,1]
     
     ## add 'distance' column   
     df['distance'] = ((df[x_col]**2) + (df[y_col]**2))**0.5
@@ -217,8 +220,14 @@ def benchmark_nearest_cell(df_val, x_col, y_col, target_col):
 
 def grid_viewer(df, y_col, y_hat_col, gauge_ids = None, buffer_size=2, plot_title=None):
     
-    assert 'gauge_id' in df.columns, '[ERROR] gauge id column not found'
-    
+    # assert 'gauge_id' in df.columns, '[ERROR] gauge id column not found'
+
+    if not 'gauge_id' in df.columns:
+        # get gauge ids     
+        idx = pd.Series(df.index.values).str.split('_', expand=True).values 
+        # add as separate columns 
+        df['gauge_id'] = idx[:,1]
+
     if gauge_ids is None:
         gauge_ids = df['gauge_id'].unique()
 
@@ -279,9 +288,75 @@ def grid_viewer(df, y_col, y_hat_col, gauge_ids = None, buffer_size=2, plot_titl
     return 
 
 
+def benchmark_rmse(df_timeseries, df_locations, df_labels): #, T0 = '1991-01-01', T1 = '2020-12-31'): 
+    
+    ## get gauge IDs             
+    gauge_idx = df_labels['gauge_id'].unique()
+    
+    ## create emtpy dataframe for output 
+    df_benchmark = pd.DataFrame()
+    
+    ## set counters 
+    n_gauges = 0
+    n_correct = 0 
+    
+    ## empy lists to collect results 
+    id_true = [] 
+    id_false = [] 
+    
+    for gauge_ix in gauge_idx:
+        n_gauges += 1 
+        col_ix = df_locations[ df_locations['gauge_id'] == int(gauge_ix)].index.values 
+        
+        sub_df = df_timeseries[col_ix] 
+        gauge_col = [col for col in sub_df.columns if 'gauge' in col] 
 
+        if len(gauge_col) > 0:
+            # n_gauges += 1 
+            model_cols = [col for col in sub_df.columns if not 'gauge' in col ] 
+                                    
+            ### for each entry, calculate RMSE of
+            ### observation timeseries and model timeseries 
+            _df = pd.DataFrame() 
+            
+            for col in model_cols:
+                calc_rmse = mean_squared_error( sub_df[gauge_col], sub_df[col], squared = False)
+                
+                _df.loc[col, 'rmse'] = calc_rmse
+                _df.loc[col, 'gauge_id'] = str(gauge_ix)
+            
+            ## after calculating rmse - find smallest RMSE, flag as 1 
+            _df['y_hat'] = 0 
+            y_hat_ix = _df['rmse'].idxmin() 
+            _df.loc[y_hat_ix, 'y_hat'] = 1 
+            
+            
+            ## append true value (y) 
+            sub_y = df_labels[ df_labels['gauge_id'] == str(gauge_ix)] 
+            y = sub_y['target'] 
 
-
+            ## check if labelled 
+            if y.sum() > 0:
+                _df['y'] = y                 
+                y_flag = y.idxmax() 
+                
+                ## check prediction
+                if y_flag == y_hat_ix:
+                    n_correct += 1 
+                    id_true.append(gauge_ix)
+                else:
+                    id_false.append(gauge_ix)
+                            
+            ## append to df_benchmark 
+            df_benchmark = df_benchmark.append(_df)
+    
+    print()
+    print('-----'*10) 
+    print('Benchmark: naive min(RMSE)')            
+    print('Total found: {} ({:.2f}%)'.format( n_correct, (n_correct/n_gauges)*100) )
+    print('-----'*10)      
+    
+    return df_benchmark, id_true, id_false
 
 
 
