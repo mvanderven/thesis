@@ -128,7 +128,7 @@ def buffer_validation(df, target_col, model, scaler):
                 
             else:
                 ## create df to analyse results 
-                buffer_df = pd.DataFrame({'y': y, 'y_hat': y_hat, 'p0': p0, 'p1': p1})
+                # buffer_df = pd.DataFrame({'y': y, 'y_hat': y_hat, 'p0': p0, 'p1': p1})
                 
                 ## check y_hat - see if other potential cells match 
                 ix_y_hat = np.where(y_hat==1)[0] 
@@ -138,12 +138,12 @@ def buffer_validation(df, target_col, model, scaler):
                     id_guess.append(gauge_id)
                     
                     ## show all results in y_hat == 1 
-                    print( buffer_df[buffer_df['y_hat']==1.] )      
+                    # print( buffer_df[buffer_df['y_hat']==1.] )      
                                 
                 ## wrong results 
                 else:
                     id_false.append(gauge_id)
-                    print(buffer_df)
+                    # print(buffer_df)
  
     print()
     print('-----'*10)    
@@ -216,77 +216,6 @@ def benchmark_nearest_cell(df_val, x_col, y_col, target_col):
     print('-----'*10)    
     
     return df, id_true, id_false 
-
-
-def grid_viewer(df, y_col, y_hat_col, gauge_ids = None, buffer_size=2, plot_title=None):
-    
-    # assert 'gauge_id' in df.columns, '[ERROR] gauge id column not found'
-
-    if not 'gauge_id' in df.columns:
-        # get gauge ids     
-        idx = pd.Series(df.index.values).str.split('_', expand=True).values 
-        # add as separate columns 
-        df['gauge_id'] = idx[:,1]
-
-    if gauge_ids is None:
-        gauge_ids = df['gauge_id'].unique()
-
-    n_gauges = len(gauge_ids) 
-
-        
-    fig = plt.figure(figsize=(6,8))
-    
-    for j in range(len(gauge_ids)):
-        gauge_id = gauge_ids[j]
-        
-        df_gauge = df[ df['gauge_id'] == gauge_id] 
-        df_ix = df_gauge.index.values 
-        
-        ## create empty buffer grid for display 
-        buffer_grid = np.zeros(( int(1+(2*buffer_size))*int(1+(2*buffer_size)) ))
-        buffer_label = np.zeros(( int(1+(2*buffer_size))*int(1+(2*buffer_size)) ))
-        buffer_guess = np.zeros(( int(1+(2*buffer_size))*int(1+(2*buffer_size)) ))
-        
-        for i in range(len(df_gauge)):
-            ix = int( df_ix[i].split('_')[-1] )
-            buffer_grid[ix] = df_gauge.loc[df_ix[i], y_hat_col] 
-            buffer_label[ix] = df_gauge.loc[df_ix[i], y_col]
-            
-            if 'y_hat_prob' in df.columns:
-                buffer_guess[ix] = df_gauge.loc[df_ix[i], 'y_hat_prob']
-        
-        buffer_grid = buffer_grid.reshape(( int(1+(2*buffer_size)), int(1+(2*buffer_size)) ))
-        buffer_label = buffer_label.reshape(( int(1+(2*buffer_size)), int(1+(2*buffer_size)) ))
-        row_label, col_label = np.where(buffer_label == buffer_label.max())
-        
-        if 'y_hat_prob' in df.columns:
-            buffer_guess = buffer_guess.reshape(( int(1+(2*buffer_size)), int(1+(2*buffer_size)) ))
-            row_guess, col_guess = np.where(buffer_guess == buffer_guess.max())
-        
-        
-        if n_gauges <= 10:
-            ax = fig.add_subplot( int((n_gauges)), 1, int(j+1) )
-        else:
-            ax = fig.add_subplot( int(((n_gauges)/3)+1), 3, int(j+1) )
-            
-        ax.pcolormesh(buffer_grid, cmap='binary_r', edgecolors='white')
-        ax.set_title('Gauge ID-{}'.format(gauge_id))
-        ax.plot(col_label[0]+0.45, row_label[0]+0.55, marker = 'o', color='red', markersize=4)
-        if 'y_hat_prob' in df.columns:
-            ax.plot(col_guess[0]+0.45, row_guess[0]+0.5, marker = 'x', color='blue')
-        ax.axes.set_aspect('equal')
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.spines['bottom'].set_visible(False)
-        ax.spines['left'].set_visible(False)
-    
-    if plot_title is not None:
-        fig.suptitle(str(plot_title))
-    plt.tight_layout()   
-    return 
-
 
 def benchmark_skill_score(df_timeseries, df_locations, df_labels, method = 'rmse'): #, T0 = '1991-01-01', T1 = '2020-12-31'): 
     
@@ -372,13 +301,151 @@ def benchmark_skill_score(df_timeseries, df_locations, df_labels, method = 'rmse
     
     print()
     print('-----'*10) 
-    print('Benchmark: naive {}'.format(method))            
+    print('Benchmark: {}'.format(method))            
     print('Total found: {} ({:.2f}%)'.format( n_correct, (n_correct/n_gauges)*100) )
     print('-----'*10)      
     
     return df_benchmark, id_true, id_false
 
 
+def grid_viewer(df, y_col, y_hat_col, gauge_ids = None, buffer_size=2, plot_title=None, cmap = 'binary'):
+    
+    # assert 'gauge_id' in df.columns, '[ERROR] gauge id column not found'
 
+    if not 'gauge_id' in df.columns:
+        # get gauge ids     
+        idx = pd.Series(df.index.values).str.split('_', expand=True).values 
+        # add as separate columns 
+        df['gauge_id'] = idx[:,1]
 
+    if gauge_ids is None:
+        gauge_ids = df['gauge_id'].unique()
+
+    n_gauges = len(gauge_ids) 
+
+        
+    fig = plt.figure(figsize=(6,8))
+    
+    for j in range(len(gauge_ids)):
+        gauge_id = gauge_ids[j]
+        
+        df_gauge = df[ df['gauge_id'] == gauge_id] 
+        df_ix = df_gauge.index.values 
+        
+        ## create empty buffer grid for display 
+        buffer_grid = np.zeros(( int(1+(2*buffer_size))*int(1+(2*buffer_size)) ))
+        buffer_label = np.zeros(( int(1+(2*buffer_size))*int(1+(2*buffer_size)) ))
+        buffer_guess = np.zeros(( int(1+(2*buffer_size))*int(1+(2*buffer_size)) ))
+        
+        for i in range(len(df_gauge)):
+            ix = int( df_ix[i].split('_')[-1] )
+            buffer_grid[ix] = df_gauge.loc[df_ix[i], y_hat_col] 
+            buffer_label[ix] = df_gauge.loc[df_ix[i], y_col]
+            
+            if 'y_hat_prob' in df.columns:
+                buffer_guess[ix] = df_gauge.loc[df_ix[i], 'y_hat_prob']
+        
+        buffer_grid = buffer_grid.reshape(( int(1+(2*buffer_size)), int(1+(2*buffer_size)) ))
+        buffer_label = buffer_label.reshape(( int(1+(2*buffer_size)), int(1+(2*buffer_size)) ))
+        row_label, col_label = np.where(buffer_label == buffer_label.max())
+        
+        if 'y_hat_prob' in df.columns:
+            buffer_guess = buffer_guess.reshape(( int(1+(2*buffer_size)), int(1+(2*buffer_size)) ))
+            row_guess, col_guess = np.where(buffer_guess == buffer_guess.max())
+        
+        
+        if n_gauges <= 10:
+            ax = fig.add_subplot( int((n_gauges)), 1, int(j+1) )
+        else:
+            ax = fig.add_subplot( int(((n_gauges)/3)+1), 3, int(j+1) )
+            
+        ax.pcolormesh(buffer_grid, cmap='binary_r', edgecolors='white')
+        ax.set_title('Gauge ID-{}'.format(gauge_id))
+        ax.plot(col_label[0]+0.45, row_label[0]+0.55, marker = 'o', color='red', markersize=4)
+        if 'y_hat_prob' in df.columns:
+            ax.plot(col_guess[0]+0.45, row_guess[0]+0.5, marker = 'x', color='blue')
+        ax.axes.set_aspect('equal')
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+    
+    if plot_title is not None:
+        fig.suptitle(str(plot_title))
+    plt.tight_layout()   
+    return 
+
+def grid_view_param(df, y_col, y_hat_col, param_col = None, gauge_ids = None, buffer_size=2, plot_title=None, cmap='binary_r'):
+
+    if not 'gauge_id' in df.columns:
+        # get gauge ids     
+        idx = pd.Series(df.index.values).str.split('_', expand=True).values 
+        # add as separate columns 
+        df['gauge_id'] = idx[:,1]
+
+    if gauge_ids is None:
+        gauge_ids = df['gauge_id'].unique()
+
+    n_gauges = len(gauge_ids) 
+
+        
+    fig = plt.figure(figsize=(6,8))
+    
+    for j in range(len(gauge_ids)):
+        gauge_id = gauge_ids[j]
+        
+        df_gauge = df[ df['gauge_id'] == gauge_id] 
+        df_ix = df_gauge.index.values 
+        
+        ## create empty buffer grid for display 
+        buffer_param = np.zeros(( int(1+(2*buffer_size))*int(1+(2*buffer_size)) ))
+        buffer_y     = np.zeros(( int(1+(2*buffer_size))*int(1+(2*buffer_size)) ))
+        buffer_y_hat = np.zeros(( int(1+(2*buffer_size))*int(1+(2*buffer_size)) ))
+        
+        # buffer_grid = np.zeros(( int(1+(2*buffer_size))*int(1+(2*buffer_size)) ))
+        # buffer_label = np.zeros(( int(1+(2*buffer_size))*int(1+(2*buffer_size)) ))
+        # buffer_guess = np.zeros(( int(1+(2*buffer_size))*int(1+(2*buffer_size)) ))
+        
+        for i in range(len(df_gauge)):
+            ix = int( df_ix[i].split('_')[-1] ) 
+            buffer_param[ix] = df_gauge.loc[ df_ix[i], param_col ]
+            buffer_y[ix]     = df_gauge.loc[ df_ix[i], y_col] 
+            buffer_y_hat[ix] = df_gauge.loc[ df_ix[i], y_hat_col]
+            
+        
+        buffer_param = buffer_param.reshape(( int(1+(2*buffer_size)), int(1+(2*buffer_size)) ))
+        buffer_y     = buffer_y.reshape(( int(1+(2*buffer_size)), int(1+(2*buffer_size)) ))
+        row_y, col_y = np.where(buffer_y == buffer_y.max()) 
+                
+        buffer_y_hat = buffer_y_hat.reshape(( int(1+(2*buffer_size)), int(1+(2*buffer_size)) )) 
+        row_y_hat, col_y_hat = np.where( buffer_y_hat == buffer_y_hat.max() )
+        
+        
+        if n_gauges <= 10:
+            ax = fig.add_subplot( int((n_gauges)), 1, int(j+1) )
+        else:
+            ax = fig.add_subplot( int(((n_gauges)/3)+1), 3, int(j+1) )
+            
+        im=ax.pcolormesh(buffer_param, cmap=cmap, edgecolors='white')
+        ax.set_title('Gauge ID-{}'.format(gauge_id))
+        ax.plot(col_y + 0.45, row_y + 0.55, marker = 'o', color='red', markersize=4, linestyle='none') 
+        ax.plot(col_y_hat + 0.45, row_y_hat + 0.55, marker = 'x', color='blue', linestyle='none')
+        
+        cbar = fig.colorbar(im,ax=ax, shrink=0.9)
+        cbar.ax.set_ylabel(param_col)
+
+        ax.axes.set_aspect('equal')
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+    
+    if plot_title is not None:
+        fig.suptitle(str(plot_title))
+    plt.tight_layout()   
+    return 
 
