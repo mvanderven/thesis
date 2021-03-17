@@ -133,7 +133,7 @@ df_val, val_true, val_guess, val_false = utils.buffer_validation(df_validate, ta
 ## Nearest cell method outperforms LogisticRegression model 
 df_nc, nc_true, nc_false = utils.benchmark_nearest_cell(df_validate, 'x', 'y', target_col)
 
-#%% Benchmark RMSE 
+#%% Benchmark RMSE and NSE
 
 ## load data for min(RMSE)
 timeseries_fn = model_dir / "collect_ts_obs_mod_20210315_2.csv"
@@ -141,12 +141,12 @@ locations_fn =  model_dir / "collect_loc_obs_mod_20210315_2.csv"
 df_ts = pd.read_csv(timeseries_fn, index_col=0) 
 df_loc = pd.read_csv(locations_fn, index_col=0)
 
-#%% 
-## Algorithm and nearest cell benchmark outperfrom RMSE
+#%% Algorithm and nearest cell benchmark outperfrom RMSE
+
 df_rmse, rmse_true, rmse_false = utils.benchmark_skill_score(df_ts, df_loc, df_validate) #, T1 = '1991-12-31')
 
-#%% 
-## NSE
+#%% Algorithm and nearest cell benchmark outperfrom NSE
+
 df_nse, nse_true, nse_false = utils.benchmark_skill_score(df_ts, df_loc, df_validate, method='nse') #, T1 = '1991-12-31')
 
 #%% Show confusion plots for validation
@@ -154,7 +154,8 @@ df_nse, nse_true, nse_false = utils.benchmark_skill_score(df_ts, df_loc, df_vali
 # utils.plot_confusion_matrix(df_val['target'], df_val['y_hat'], name = 'Validation score' )
 # utils.plot_confusion_matrix(df_val['target'], df_val['y_hat_prob'], name = 'Validation proba score' )
 # utils.plot_confusion_matrix(df_nc['target'], df_nc['target_hat'], name = 'Benchmark nearest cell score' )
-# utils.plot_confusion_matrix(df_rmse['y'], df_rmse['y_hat'], name = 'Benchmark RMSE score' )
+# utils.plot_confusion_matrix(df_rmse['target'], df_rmse['y_hat'], name = 'Benchmark RMSE score' )
+# utils.plot_confusion_matrix(df_nse['target'], df_nse['y_hat'], name = 'Benchmark NSE score' )
 
 #%% Analyse coefficients 
 
@@ -177,25 +178,25 @@ df_coef = pd.DataFrame(lr_coefs[0], index = coef_names, columns=['Coefficients']
 # utils.grid_viewer(df_nc, 'target', 'target_hat', gauge_ids = nc_true, plot_title = 'Benchmark nearest cell true')
 # utils.grid_viewer(df_nc, 'target', 'target_hat', gauge_ids = nc_false, plot_title = 'Benchmark nearest cell false')
 
-# utils.grid_viewer(df_rmse, 'y', 'y_hat', gauge_ids = rmse_true, plot_title = 'Benchmark RMSE true')
-# utils.grid_viewer(df_rmse, 'y', 'y_hat', gauge_ids = rmse_false, plot_title = 'Benchmark RMSE false')
+# utils.grid_viewer(df_rmse, 'target', 'y_hat', gauge_ids = rmse_true, plot_title = 'Benchmark RMSE true')
+# utils.grid_viewer(df_rmse, 'target', 'y_hat', gauge_ids = rmse_false, plot_title = 'Benchmark RMSE false')
 
-# utils.grid_viewer(df_nse, 'y', 'y_hat', gauge_ids = nse_true, plot_title = 'Benchmark NSE true')
-# utils.grid_viewer(df_nse, 'y', 'y_hat', gauge_ids = nse_false, plot_title = 'Benchmark NSE false')
+# utils.grid_viewer(df_nse, 'target', 'y_hat', gauge_ids = nse_true, plot_title = 'Benchmark NSE true')
+# utils.grid_viewer(df_nse, 'target', 'y_hat', gauge_ids = nse_false, plot_title = 'Benchmark NSE false')
 
 #%% Show validation results in grid with varying backgrounds 
 
-# utils.grid_view_param(df_val, 'target', 'y_hat', param_col = 'Nm-all', 
-#                       gauge_ids = val_true, buffer_size=2, plot_title= 'Validation true',
-#                       cmap='Blues')
+utils.grid_view_param(df_val, 'target', 'y_hat', param_col = 'Nm-all', 
+                      gauge_ids = val_true, buffer_size=2, plot_title= 'Validation true',
+                      cmap='Blues')
 
-# utils.grid_view_param(df_val, 'target', 'y_hat', param_col = 'Nm-all', 
-#                       gauge_ids = val_guess, buffer_size=2, plot_title= 'Validation guess',
-#                       cmap='Blues')
+utils.grid_view_param(df_val, 'target', 'y_hat', param_col = 'Nm-all', 
+                      gauge_ids = val_guess, buffer_size=2, plot_title= 'Validation guess',
+                      cmap='Blues')
 
-# utils.grid_view_param(df_val, 'target', 'y_hat', param_col = 'Nm-all', 
-#                       gauge_ids = val_false, buffer_size=2, plot_title= 'Validation false',
-#                       cmap='Blues')
+utils.grid_view_param(df_val, 'target', 'y_hat', param_col = 'Nm-all', 
+                      gauge_ids = val_false, buffer_size=2, plot_title= 'Validation false',
+                      cmap='Blues')
 
 #%% Show NC benchmark results  with varying backgrounds 
 
@@ -211,22 +212,22 @@ utils.grid_view_param(df_nc, 'target', 'target_hat', param_col = 'Nm-all',
 
 #%% Show NSE benchmark results  with varying backgrounds 
 
-utils.grid_view_param(df_nse, 'y', 'y_hat', param_col = 'nse', 
+utils.grid_view_param(df_nse, 'target', 'y_hat', param_col = 'Nm-all', 
                       gauge_ids = nse_true, buffer_size=2, plot_title= 'Benchmark nse true',
                       cmap='Blues')
 
-utils.grid_view_param(df_nse, 'y', 'y_hat', param_col = 'nse', 
+utils.grid_view_param(df_nse, 'target', 'y_hat', param_col = 'Nm-all', 
                       gauge_ids = nse_false, buffer_size=2, plot_title= 'Benchmark nse false',
                       cmap='Blues')
 
 
 #%% Show RMSE benchmark results  with varying backgrounds 
 
-utils.grid_view_param(df_rmse, 'y', 'y_hat', param_col = 'rmse', 
+utils.grid_view_param(df_rmse, 'target', 'y_hat', param_col = 'Nm-all', 
                       gauge_ids = rmse_true, buffer_size=2, plot_title= 'Benchmark rmse true',
                       cmap='Blues')
 
-utils.grid_view_param(df_rmse, 'y', 'y_hat', param_col = 'rmse', 
+utils.grid_view_param(df_rmse, 'target', 'y_hat', param_col = 'Nm-all', 
                       gauge_ids = rmse_false, buffer_size=2, plot_title= 'Benchmark rmse false',
                       cmap='Blues')
 
