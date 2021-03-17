@@ -38,7 +38,7 @@ print(df.head())
 
 
 #%% Test: drop features
-# df.drop(columns=['lat', 'lon'], inplace=True)
+df.drop(columns=['lat', 'lon'], inplace=True)
 
 #%% Divide dataset based on number of gauges 
 ## 70% for training
@@ -180,8 +180,61 @@ df_coef = pd.DataFrame(lr_coefs[0], index = coef_names, columns=['Coefficients']
 # utils.grid_viewer(df_rmse, 'y', 'y_hat', gauge_ids = rmse_true, plot_title = 'Benchmark RMSE true')
 # utils.grid_viewer(df_rmse, 'y', 'y_hat', gauge_ids = rmse_false, plot_title = 'Benchmark RMSE false')
 
+# utils.grid_viewer(df_nse, 'y', 'y_hat', gauge_ids = nse_true, plot_title = 'Benchmark NSE true')
+# utils.grid_viewer(df_nse, 'y', 'y_hat', gauge_ids = nse_false, plot_title = 'Benchmark NSE false')
 
-#%% 
+#%% Show validation results in grid with varying backgrounds 
+
+# utils.grid_view_param(df_val, 'target', 'y_hat', param_col = 'Nm-all', 
+#                       gauge_ids = val_true, buffer_size=2, plot_title= 'Validation true',
+#                       cmap='Blues')
+
+# utils.grid_view_param(df_val, 'target', 'y_hat', param_col = 'Nm-all', 
+#                       gauge_ids = val_guess, buffer_size=2, plot_title= 'Validation guess',
+#                       cmap='Blues')
+
+# utils.grid_view_param(df_val, 'target', 'y_hat', param_col = 'Nm-all', 
+#                       gauge_ids = val_false, buffer_size=2, plot_title= 'Validation false',
+#                       cmap='Blues')
+
+#%% Show NC benchmark results  with varying backgrounds 
+
+utils.grid_view_param(df_nc, 'target', 'target_hat', param_col = 'Nm-all', 
+                      gauge_ids = nc_true, buffer_size=2, plot_title= 'Benchmark NC true',
+                      cmap='Blues')
+
+utils.grid_view_param(df_nc, 'target', 'target_hat', param_col = 'Nm-all', 
+                      gauge_ids = nc_false, buffer_size=2, plot_title= 'Benchmark NC false',
+                      cmap='Blues')
+
+
+
+#%% Show NSE benchmark results  with varying backgrounds 
+
+utils.grid_view_param(df_nse, 'y', 'y_hat', param_col = 'nse', 
+                      gauge_ids = nse_true, buffer_size=2, plot_title= 'Benchmark nse true',
+                      cmap='Blues')
+
+utils.grid_view_param(df_nse, 'y', 'y_hat', param_col = 'nse', 
+                      gauge_ids = nse_false, buffer_size=2, plot_title= 'Benchmark nse false',
+                      cmap='Blues')
+
+
+#%% Show RMSE benchmark results  with varying backgrounds 
+
+utils.grid_view_param(df_rmse, 'y', 'y_hat', param_col = 'rmse', 
+                      gauge_ids = rmse_true, buffer_size=2, plot_title= 'Benchmark rmse true',
+                      cmap='Blues')
+
+utils.grid_view_param(df_rmse, 'y', 'y_hat', param_col = 'rmse', 
+                      gauge_ids = rmse_false, buffer_size=2, plot_title= 'Benchmark rmse false',
+                      cmap='Blues')
+
+
+
+
+
+
 
 
 

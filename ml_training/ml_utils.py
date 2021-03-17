@@ -377,7 +377,7 @@ def grid_viewer(df, y_col, y_hat_col, gauge_ids = None, buffer_size=2, plot_titl
     plt.tight_layout()   
     return 
 
-def grid_view_param(df, y_col, y_hat_col, param_col = None, gauge_ids = None, buffer_size=2, plot_title=None, cmap='binary_r'):
+def grid_view_param(df, y_col, y_hat_col, param_col, gauge_ids = None, buffer_size=2, plot_title=None, cmap='binary_r'):
 
     if not 'gauge_id' in df.columns:
         # get gauge ids     
@@ -403,11 +403,7 @@ def grid_view_param(df, y_col, y_hat_col, param_col = None, gauge_ids = None, bu
         buffer_param = np.zeros(( int(1+(2*buffer_size))*int(1+(2*buffer_size)) ))
         buffer_y     = np.zeros(( int(1+(2*buffer_size))*int(1+(2*buffer_size)) ))
         buffer_y_hat = np.zeros(( int(1+(2*buffer_size))*int(1+(2*buffer_size)) ))
-        
-        # buffer_grid = np.zeros(( int(1+(2*buffer_size))*int(1+(2*buffer_size)) ))
-        # buffer_label = np.zeros(( int(1+(2*buffer_size))*int(1+(2*buffer_size)) ))
-        # buffer_guess = np.zeros(( int(1+(2*buffer_size))*int(1+(2*buffer_size)) ))
-        
+                
         for i in range(len(df_gauge)):
             ix = int( df_ix[i].split('_')[-1] ) 
             buffer_param[ix] = df_gauge.loc[ df_ix[i], param_col ]
@@ -430,7 +426,7 @@ def grid_view_param(df, y_col, y_hat_col, param_col = None, gauge_ids = None, bu
             
         im=ax.pcolormesh(buffer_param, cmap=cmap, edgecolors='white')
         ax.set_title('Gauge ID-{}'.format(gauge_id))
-        ax.plot(col_y + 0.45, row_y + 0.55, marker = 'o', color='red', markersize=4, linestyle='none') 
+        ax.plot(col_y + 0.45, row_y + 0.55, marker = 'o', color='red', linestyle='none') 
         ax.plot(col_y_hat + 0.45, row_y_hat + 0.55, marker = 'x', color='blue', linestyle='none')
         
         cbar = fig.colorbar(im,ax=ax, shrink=0.9)
