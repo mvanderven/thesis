@@ -11,6 +11,8 @@ import pandas as pd
 from pathlib import Path 
 import numpy as np 
 
+import matplotlib.pyplot as plt 
+
 from sklearn.metrics import classification_report 
 from sklearn.model_selection import train_test_split 
 from sklearn.preprocessing import MinMaxScaler
@@ -236,16 +238,18 @@ df_coef = pd.DataFrame(lr_coefs[0], index = coef_names, columns=['Coefficients']
 
 utils.plot_locations(df_loc, x='lon', y='lat', plot_title='Gauge locations')
 
-#%% Display results 
+#%% Display results algorithm 
 
 dict_algorithm={
-    'true': [ int(v) for v in val_true+val_guess ],
+    'true': [ int(v) for v in val_true],
+    'guess': [ int(v) for v in val_guess],
     'false': [int(v) for v in val_false]
     }
 
 utils.plot_locations(df_loc, x='lon', y='lat', gauge_labels=dict_algorithm, label_key='gauge_id',
                      plot_title='Algorithm results')
 
+#%% Display results nearest cell benchmark 
 dict_nc={
     'true': [ int(v) for v in nc_true ],
     'false': [int(v) for v in nc_false]
@@ -253,6 +257,19 @@ dict_nc={
 
 utils.plot_locations(df_loc, x='lon', y='lat', gauge_labels=dict_nc, label_key='gauge_id',
                      plot_title='Benchmark NC results')
+
+
+#%% Display timeseries 
+
+utils.plot_timeseries(df_ts, df_val, show_list = val_true)
+
+
+
+
+
+
+
+
 
 
 

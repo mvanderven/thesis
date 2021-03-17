@@ -500,6 +500,49 @@ def plot_locations(df_locations, x = 'x', y='y', gauge_labels=None, label_key = 
     plt.show()
     return
 
+def plot_timeseries(df, df_label, show_list = None, plot_title=None, label_list = None): 
+    
+    if show_list is not None:
+        df_label = df_label[ df_label['gauge_id'].isin(show_list)] 
+    
+    if show_list is None:
+        show_list = df_label['gauge_id'].unique()
+    
+    ts_cols = df.columns  
+    
+    
+    fig = plt.figure(figsize=(12,9)) 
+
+    for i in range(len(show_list)):
+        gauge_id = show_list[i]
+
+        labels = df_label[ df_label['gauge_id'] == gauge_id]['y_hat_prob'] 
+        
+        cols = [col for col in ts_cols if str(gauge_id) in col]         
+        collect_ts = df[cols]  
+        
+                
+        # plt.figure(figsize=(12,4)) 
+        if len(show_list) < 6:
+            ax = fig.add_subplot( len(show_list), 1, int(i+1) )
+        else:
+            ax = fig.add_subplot( int((len(show_list)/3)+1), 3, int(i+1) )
+        
+        for col in cols:
+            
+            if 'gauge' in col:
+                ax.plot(collect_ts[col].values, color='k') 
+            
+            else:
+                if labels.loc[col] == 0:
+                    ax.plot(collect_ts[col].values, color='grey', lw=0.5) 
+                else:
+                    ax.plot(collect_ts[col].values, color='r', lw=0.5)
+                    
+        ax.set_title('Gauge ID-{}'.format(gauge_id))
+    plt.tight_layout()
+    
+    return 
 
 
 
