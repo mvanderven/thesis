@@ -226,8 +226,7 @@ def benchmark_skill_score(df_timeseries, df_locations, df_labels, method = 'rmse
     ## get gauge IDs             
     gauge_idx = df_labels['gauge_id'].unique()
     
-    ## create emtpy dataframe for output 
-    df_benchmark = pd.DataFrame()
+    ## create dataframe for output 
     out_df = df_labels.copy()
     
     ## set counters 
@@ -262,7 +261,6 @@ def benchmark_skill_score(df_timeseries, df_locations, df_labels, method = 'rmse
                 Q_sim = sub_df[col].values 
                                 
                 if method == 'rmse':
-                    # calc_index = mean_squared_error( sub_df[gauge_col], sub_df[col], squared = False) 
                     calc_index = mean_squared_error( Q_obs, Q_sim, squared=False )
 
                 if method == 'nse':
@@ -297,20 +295,16 @@ def benchmark_skill_score(df_timeseries, df_locations, df_labels, method = 'rmse
                 else:
                     id_false.append(gauge_ix)
                             
-            ## append to df_benchmark 
-            df_benchmark = df_benchmark.append(_df) 
-            
-    out_df.loc[ df_benchmark.index, method ] = df_benchmark[method]
-    out_df.loc[ df_benchmark.index, 'y_hat'] = df_benchmark['y_hat'] 
-            
-    
+            ## place results in df  
+            out_df.loc[ _df.index, method ] = _df[method]
+            out_df.loc[ _df.index, 'y_hat'] = _df['y_hat'] 
+                   
     print()
     print('-----'*10) 
     print('Benchmark: {}'.format(method))            
     print('Total found: {} ({:.2f}%)'.format( n_correct, (n_correct/n_gauges)*100) )
     print('-----'*10)      
     
-    # return df_benchmark, id_true, id_false
     return out_df, id_true, id_false
 
 
