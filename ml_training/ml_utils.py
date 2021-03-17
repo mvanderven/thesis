@@ -288,7 +288,11 @@ def grid_viewer(df, y_col, y_hat_col, gauge_ids = None, buffer_size=2, plot_titl
     return 
 
 
-def benchmark_rmse(df_timeseries, df_locations, df_labels): #, T0 = '1991-01-01', T1 = '2020-12-31'): 
+def benchmark_skill_score(df_timeseries, df_locations, df_labels, method = 'rmse'): #, T0 = '1991-01-01', T1 = '2020-12-31'): 
+    
+    method = method.lower()
+    available_methods = ['rmse', 'nse'] 
+    assert method in available_methods, '[ERROR] method {} not available - select from "{}"'.format(method, available_methods)
     
     ## get gauge IDs             
     gauge_idx = df_labels['gauge_id'].unique()
@@ -319,18 +323,34 @@ def benchmark_rmse(df_timeseries, df_locations, df_labels): #, T0 = '1991-01-01'
             ### observation timeseries and model timeseries 
             _df = pd.DataFrame() 
             
+            ## extract observation data as arrays 
+            Q_obs = sub_df[gauge_col].values[:,0]
+            Q_obs_avg = Q_obs.mean() 
+            
             for col in model_cols:
-                calc_rmse = mean_squared_error( sub_df[gauge_col], sub_df[col], squared = False)
                 
-                _df.loc[col, 'rmse'] = calc_rmse
+                Q_sim = sub_df[col].values 
+                                
+                if method == 'rmse':
+                    # calc_index = mean_squared_error( sub_df[gauge_col], sub_df[col], squared = False) 
+                    calc_index = mean_squared_error( Q_obs, Q_sim, squared=False )
+
+                if method == 'nse':
+                    calc_index =  1 - ((Q_sim - Q_obs)**2).sum() / ( ((Q_obs-Q_obs_avg)**2).sum() )
+                    
+                _df.loc[col, method] = calc_index
                 _df.loc[col, 'gauge_id'] = str(gauge_ix)
-            
-            ## after calculating rmse - find smallest RMSE, flag as 1 
+                        
             _df['y_hat'] = 0 
-            y_hat_ix = _df['rmse'].idxmin() 
+            if method == 'rmse':
+                y_hat_ix = _df[method].idxmin() 
+            
+            if method == 'nse':
+                ## find largest NSE, flag as 1
+                y_hat_ix = _df[method].idxmax() 
+            
             _df.loc[y_hat_ix, 'y_hat'] = 1 
-            
-            
+                
             ## append true value (y) 
             sub_y = df_labels[ df_labels['gauge_id'] == str(gauge_ix)] 
             y = sub_y['target'] 
@@ -352,7 +372,7 @@ def benchmark_rmse(df_timeseries, df_locations, df_labels): #, T0 = '1991-01-01'
     
     print()
     print('-----'*10) 
-    print('Benchmark: naive min(RMSE)')            
+    print('Benchmark: naive {}'.format(method))            
     print('Total found: {} ({:.2f}%)'.format( n_correct, (n_correct/n_gauges)*100) )
     print('-----'*10)      
     
