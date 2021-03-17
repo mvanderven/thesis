@@ -141,8 +141,13 @@ locations_fn =  model_dir / "collect_loc_obs_mod_20210315_2.csv"
 df_ts = pd.read_csv(timeseries_fn, index_col=0) 
 df_loc = pd.read_csv(locations_fn, index_col=0)
 
+#%% 
 ## Algorithm and nearest cell benchmark outperfrom RMSE
-df_rmse, rmse_true, rmse_false = utils.benchmark_rmse(df_ts, df_loc, df_validate) #, T1 = '1991-12-31')
+df_rmse, rmse_true, rmse_false = utils.benchmark_skill_score(df_ts, df_loc, df_validate) #, T1 = '1991-12-31')
+
+#%% 
+## NSE
+df_nse, nse_true, nse_false = utils.benchmark_skill_score(df_ts, df_loc, df_validate, method='nse') #, T1 = '1991-12-31')
 
 #%% Show confusion plots for validation
 
