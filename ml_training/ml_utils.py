@@ -9,6 +9,9 @@ import seaborn as sns
 import matplotlib.pyplot as plt 
 import pandas as pd 
 import numpy as np 
+import cartopy as cp 
+import cartopy.feature as cfeature
+
 
 from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
 from sklearn.linear_model import LogisticRegression
@@ -310,8 +313,6 @@ def benchmark_skill_score(df_timeseries, df_locations, df_labels, method = 'rmse
 
 def grid_viewer(df, y_col, y_hat_col, gauge_ids = None, buffer_size=2, plot_title=None, cmap = 'binary'):
     
-    # assert 'gauge_id' in df.columns, '[ERROR] gauge id column not found'
-
     if not 'gauge_id' in df.columns:
         # get gauge ids     
         idx = pd.Series(df.index.values).str.split('_', expand=True).values 
@@ -375,6 +376,7 @@ def grid_viewer(df, y_col, y_hat_col, gauge_ids = None, buffer_size=2, plot_titl
     if plot_title is not None:
         fig.suptitle(str(plot_title))
     plt.tight_layout()   
+    plt.show()
     return 
 
 def grid_view_param(df, y_col, y_hat_col, param_col, gauge_ids = None, buffer_size=2, plot_title=None, cmap='binary_r'):
@@ -443,5 +445,62 @@ def grid_view_param(df, y_col, y_hat_col, param_col, gauge_ids = None, buffer_si
     if plot_title is not None:
         fig.suptitle(str(plot_title))
     plt.tight_layout()   
+    plt.show()
     return 
+
+def plot_locations(df_locations, x = 'x', y='y', gauge_labels=None, label_key = None, 
+                   plot_title=None): 
+    
+    ## select gauge data only 
+    df_gauges = df_locations[ df_locations.index.str.contains('gauge') ]
+    
+    ## FIGURE    
+    fig = plt.figure(figsize=(10,6)) 
+    
+    ax = fig.add_subplot(111, projection = cp.crs.PlateCarree()) 
+    
+    x_min, x_max = df_gauges[x].min(), df_gauges[x].max()
+    y_min, y_max = df_gauges[y].min(), df_gauges[y].max()
+        
+    ## BACKGROUND
+    ## imagery
+    rivers_50m = cfeature.NaturalEarthFeature('physical', 'rivers_lake_centerlines', '50m') 
+    ax.add_feature(cp.feature.OCEAN)
+    ax.add_feature(cp.feature.LAND, edgecolor='black')
+    ax.add_feature(cp.feature.BORDERS)
+    ax.add_feature(rivers_50m, facecolor='None', edgecolor='b') 
+    
+    wd = 10.
+    ax.set_xlim( max(-180, x_min - wd), min(180, x_max + wd) )
+    ax.set_ylim( max(-90, y_min - wd),  min(90, y_max + wd) )
+    
+    ## GAUGE LOCATIONS 
+    if gauge_labels is None:
+        ax.plot( df_gauges[x], df_gauges[y], linestyle='none', marker='.', color='r', markersize=4)
+        
+        if plot_title is not None:
+            ax.set_title('{} (n={})'.format(plot_title, len(df_gauges)))    
+    else:
+        n_items = 0 
+        if label_key in df_gauges.columns:
+            for k in gauge_labels.keys():
+                subset = df_gauges[ df_gauges[label_key].isin( gauge_labels[k] )] 
+                n_items += len(subset)
+                ax.plot( subset[x], subset[y], linestyle='none', marker = '.', markersize=10, label = k)                
+            
+            ax.legend() 
+            
+            if plot_title is not None:
+                ax.set_title('{} (n={})'.format(plot_title, n_items))
+    
+        else:
+            print('Label not found')
+            
+     
+    plt.show()
+    return
+
+
+
+
 

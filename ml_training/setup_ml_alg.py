@@ -186,52 +186,73 @@ df_coef = pd.DataFrame(lr_coefs[0], index = coef_names, columns=['Coefficients']
 
 #%% Show validation results in grid with varying backgrounds 
 
-utils.grid_view_param(df_val, 'target', 'y_hat', param_col = 'Nm-all', 
-                      gauge_ids = val_true, buffer_size=2, plot_title= 'Validation true',
-                      cmap='Blues')
+# utils.grid_view_param(df_val, 'target', 'y_hat', param_col = 'Nm-all', 
+#                       gauge_ids = val_true, buffer_size=2, plot_title= 'Validation true',
+#                       cmap='Blues')
 
-utils.grid_view_param(df_val, 'target', 'y_hat', param_col = 'Nm-all', 
-                      gauge_ids = val_guess, buffer_size=2, plot_title= 'Validation guess',
-                      cmap='Blues')
+# utils.grid_view_param(df_val, 'target', 'y_hat', param_col = 'Nm-all', 
+#                       gauge_ids = val_guess, buffer_size=2, plot_title= 'Validation guess',
+#                       cmap='Blues')
 
-utils.grid_view_param(df_val, 'target', 'y_hat', param_col = 'Nm-all', 
-                      gauge_ids = val_false, buffer_size=2, plot_title= 'Validation false',
-                      cmap='Blues')
+# utils.grid_view_param(df_val, 'target', 'y_hat', param_col = 'Nm-all', 
+#                       gauge_ids = val_false, buffer_size=2, plot_title= 'Validation false',
+#                       cmap='Blues')
 
 #%% Show NC benchmark results  with varying backgrounds 
 
-utils.grid_view_param(df_nc, 'target', 'target_hat', param_col = 'Nm-all', 
-                      gauge_ids = nc_true, buffer_size=2, plot_title= 'Benchmark NC true',
-                      cmap='Blues')
+# utils.grid_view_param(df_nc, 'target', 'target_hat', param_col = 'Nm-all', 
+#                       gauge_ids = nc_true, buffer_size=2, plot_title= 'Benchmark NC true',
+#                       cmap='Blues')
 
-utils.grid_view_param(df_nc, 'target', 'target_hat', param_col = 'Nm-all', 
-                      gauge_ids = nc_false, buffer_size=2, plot_title= 'Benchmark NC false',
-                      cmap='Blues')
+# utils.grid_view_param(df_nc, 'target', 'target_hat', param_col = 'Nm-all', 
+#                       gauge_ids = nc_false, buffer_size=2, plot_title= 'Benchmark NC false',
+#                       cmap='Blues')
 
 
 
 #%% Show NSE benchmark results  with varying backgrounds 
 
-utils.grid_view_param(df_nse, 'target', 'y_hat', param_col = 'Nm-all', 
-                      gauge_ids = nse_true, buffer_size=2, plot_title= 'Benchmark nse true',
-                      cmap='Blues')
+# utils.grid_view_param(df_nse, 'target', 'y_hat', param_col = 'Nm-all', 
+#                       gauge_ids = nse_true, buffer_size=2, plot_title= 'Benchmark nse true',
+#                       cmap='Blues')
 
-utils.grid_view_param(df_nse, 'target', 'y_hat', param_col = 'Nm-all', 
-                      gauge_ids = nse_false, buffer_size=2, plot_title= 'Benchmark nse false',
-                      cmap='Blues')
+# utils.grid_view_param(df_nse, 'target', 'y_hat', param_col = 'Nm-all', 
+#                       gauge_ids = nse_false, buffer_size=2, plot_title= 'Benchmark nse false',
+#                       cmap='Blues')
 
 
 #%% Show RMSE benchmark results  with varying backgrounds 
 
-utils.grid_view_param(df_rmse, 'target', 'y_hat', param_col = 'Nm-all', 
-                      gauge_ids = rmse_true, buffer_size=2, plot_title= 'Benchmark rmse true',
-                      cmap='Blues')
+# utils.grid_view_param(df_rmse, 'target', 'y_hat', param_col = 'Nm-all', 
+#                       gauge_ids = rmse_true, buffer_size=2, plot_title= 'Benchmark rmse true',
+#                       cmap='Blues')
 
-utils.grid_view_param(df_rmse, 'target', 'y_hat', param_col = 'Nm-all', 
-                      gauge_ids = rmse_false, buffer_size=2, plot_title= 'Benchmark rmse false',
-                      cmap='Blues')
+# utils.grid_view_param(df_rmse, 'target', 'y_hat', param_col = 'Nm-all', 
+#                       gauge_ids = rmse_false, buffer_size=2, plot_title= 'Benchmark rmse false',
+#                       cmap='Blues')
 
 
+#%% Display locations in model domain 
+
+utils.plot_locations(df_loc, x='lon', y='lat', plot_title='Gauge locations')
+
+#%% Display results 
+
+dict_algorithm={
+    'true': [ int(v) for v in val_true+val_guess ],
+    'false': [int(v) for v in val_false]
+    }
+
+utils.plot_locations(df_loc, x='lon', y='lat', gauge_labels=dict_algorithm, label_key='gauge_id',
+                     plot_title='Algorithm results')
+
+dict_nc={
+    'true': [ int(v) for v in nc_true ],
+    'false': [int(v) for v in nc_false]
+    }
+
+utils.plot_locations(df_loc, x='lon', y='lat', gauge_labels=dict_nc, label_key='gauge_id',
+                     plot_title='Benchmark NC results')
 
 
 
