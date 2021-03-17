@@ -539,7 +539,10 @@ def plot_timeseries(df, df_label, show_list = None, plot_title=None, label_list 
                 else:
                     ax.plot(collect_ts[col].values, color='r', lw=0.5)
                     
-        ax.set_title('Gauge ID-{}'.format(gauge_id))
+        ax.set_title('Gauge ID-{}'.format(gauge_id)) 
+        ax.set_xlim(0, 365 ) 
+        ax.grid()
+        
     plt.tight_layout()
     
     return 
