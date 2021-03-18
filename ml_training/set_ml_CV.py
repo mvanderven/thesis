@@ -70,16 +70,23 @@ unique_gauges = df['gauge_id'].unique()
 
 #%% Get k_fold classification results 
 
-df_results = utils.k_fold_CV(df, k=100) 
+print('-----'*10)
+print('K fold Cross Validation')
+print('-----'*10)
 
-print(df_results)
+df_results = utils.k_fold_CV(df, k=10) 
+df_prob = df_results[ df_results['cat'] == 'prob'] 
+print(df_prob.describe())
 
+#%% Leave one out CV 
+print()
+print('-----'*10)
+print('Leave One Out Cross Validation')
+print('-----'*10)
 
-#%% 
-
-
-
-
+df_LOOCV = utils.k_fold_CV(df, k=len(unique_gauges)) 
+df_prob = df_LOOCV[ df_LOOCV['cat'] == 'prob'] 
+print(df_prob.describe())
 
 
 

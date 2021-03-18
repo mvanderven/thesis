@@ -18,12 +18,14 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split 
 from sklearn.preprocessing import MinMaxScaler
 
+import random 
+
 
 def subsample(df, target_col, target_value = 1., n_frac = 1.):
     
     df_1 = df[ df[target_col] == target_value] 
     df_0 = df[ df[target_col] != target_value] 
-    
+        
     n1 = min( int(len(df_1)*n_frac ), len(df_0) )
     
     ## combine all 1 values with an equal number of 0's 
@@ -553,21 +555,40 @@ def k_fold_CV(df, k = 10, target_col='target'):
     
     unique_gauges = df['gauge_id'].unique() 
     
+    assert k <= len(unique_gauges), '[ERROR] k={} too large for n={}'.format(k, len(unique_gauges))
+    
     k_train = [] 
     k_test = [] 
     k_val = [] 
-    k_prob = []
+    k_prob = []  
     
+    
+    ### shuffle list 
+    random.shuffle(unique_gauges)
+    
+    ### divide in k-fold sublists 
+    split_gauges = np.array_split(unique_gauges, k) 
+        
     for i in range(k): 
-                
-        ## split gauges 
-        gauges_train_test, gauges_validation= train_test_split(unique_gauges, test_size = 0.15) 
+        
+        ## holdout a sublist for validation
+        ## from different groups 
+        gauges_validation = split_gauges[i]
+        if i == 0:
+            test = split_gauges[1:]
+        elif i == int(k-1):
+            test = split_gauges[:-1] 
+        else:
+            test = split_gauges[:i] + split_gauges[i+1:]
+        
+        gauges_train_test = [item for sublist in test for item in sublist]
         
         ## create new dfs 
         df_train_test = df[ df['gauge_id'].isin(gauges_train_test) ] 
         df_validation = df[ df['gauge_id'].isin(gauges_validation) ] 
         
         ## subsample df_train_test  
+        ## HERE variation -- different 0 cells are selected with subsampling 
         df_train_test_sample = subsample(df_train_test, target_col, n_frac = 1) 
         
         ## split df_train_test_sample into train and test set 
@@ -610,15 +631,17 @@ def k_fold_CV(df, k = 10, target_col='target'):
         k_prob.append([accuracy_score(y_val, y_hat_prob), precision_score(y_val, y_hat_prob), 
                         recall_score(y_val, y_hat_prob), f1_score(y_val, y_hat_prob)])
         
-        
+    k_train = np.array(k_train)
+    k_test = np.array(k_test)
+    k_val = np.array(k_val)
+    k_prob= np.array(k_prob)     
+    k_results = np.concatenate((k_train, k_test, k_val, k_prob)) 
+      
     cols = ['acc', 'prec', 'rec', 'f1']
-    k_train = np.array(k_train).mean(axis=0)
-    k_test = np.array(k_test).mean(axis=0)
-    k_val = np.array(k_val).mean(axis=0)
-    k_prob= np.array(k_prob).mean(axis=0)
+    ix = ['train'] * k + ['test'] * k + ['val'] * k + ['prob'] * k
+    df = pd.DataFrame(k_results, columns = cols)  
+    df['cat'] = ix
     
-    df = pd.DataFrame( [k_train, k_test, k_val, k_prob], columns = cols, index = ['train', 'test', 'method1', 'method2'] ) 
-        
     return df 
 
 
