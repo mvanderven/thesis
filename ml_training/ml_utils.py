@@ -433,7 +433,7 @@ def grid_view_param(df, y_col, y_hat_col, param_col, gauge_ids = None, buffer_si
         im=ax.pcolormesh(buffer_param, cmap=cmap, edgecolors='white')
         ax.set_title('Gauge ID-{}'.format(gauge_id))
         ax.plot(col_y + 0.45, row_y + 0.55, marker = 'o', color='red', linestyle='none') 
-        ax.plot(col_y_hat + 0.45, row_y_hat + 0.55, marker = 'x', color='blue', linestyle='none')
+        ax.plot(col_y_hat + 0.45, row_y_hat + 0.55, marker = 'x', color='orange', linestyle='none')
         
         cbar = fig.colorbar(im,ax=ax, shrink=0.9)
         cbar.ax.set_ylabel(param_col)
@@ -588,7 +588,7 @@ def k_fold_CV(df, k = 10, target_col='target'):
         df_validation = df[ df['gauge_id'].isin(gauges_validation) ] 
         
         ## subsample df_train_test  
-        ## HERE variation -- different 0 cells are selected with subsampling 
+        ## HERE variation issue -- different 0 cells are selected with subsampling 
         df_train_test_sample = subsample(df_train_test, target_col, n_frac = 1) 
         
         ## split df_train_test_sample into train and test set 

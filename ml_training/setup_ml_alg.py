@@ -11,7 +11,7 @@ import pandas as pd
 from pathlib import Path 
 import numpy as np 
 
-import matplotlib.pyplot as plt 
+# import matplotlib.pyplot as plt 
 
 from sklearn.metrics import classification_report 
 from sklearn.model_selection import train_test_split 
@@ -63,8 +63,6 @@ for gauge in unique_gauges:
     if check_df['target'].sum() < 0.5:        
         df.drop(index=check_df.index, inplace=True)
 
-print(df.head())
-
 ## update unique gauges 
 unique_gauges = df['gauge_id'].unique()
 
@@ -85,7 +83,7 @@ df_sampled = utils.subsample(df_train_test, target_col, n_frac = 1)
 
 X_train, X_val, y_train, y_val = train_test_split( df_sampled.drop([ 'gauge_id', target_col], axis=1), 
                                                     df_sampled[target_col],
-                                                    test_size = 0.2)
+                                                    test_size = 0.15)
 
 
 #%% scale/normalize training set & apply to validation set 
@@ -123,8 +121,8 @@ print('-----'*10)
 
 #%% Plot confusion matrix 
 
-# utils.plot_confusion_matrix(y_train, y_hat_train, name = 'Training score' )
-# utils.plot_confusion_matrix(y_val, y_hat_val, name = 'Test score' )
+utils.plot_confusion_matrix(y_train, y_hat_train, name = 'Training score' )
+utils.plot_confusion_matrix(y_val, y_hat_val, name = 'Test score' )
 
 #%% Validate results in buffer format 
 
@@ -188,17 +186,17 @@ df_coef = pd.DataFrame(lr_coefs[0], index = coef_names, columns=['Coefficients']
 
 #%% Show validation results in grid with varying backgrounds 
 
-# utils.grid_view_param(df_val, 'target', 'y_hat', param_col = 'Nm-all', 
-#                       gauge_ids = val_true, buffer_size=2, plot_title= 'Validation true',
-#                       cmap='Blues')
+utils.grid_view_param(df_val, 'target', 'y_hat', param_col = 'Nm-all', 
+                      gauge_ids = val_true, buffer_size=2, plot_title= 'Validation true',
+                      cmap='Blues')
 
-# utils.grid_view_param(df_val, 'target', 'y_hat', param_col = 'Nm-all', 
-#                       gauge_ids = val_guess, buffer_size=2, plot_title= 'Validation guess',
-#                       cmap='Blues')
+utils.grid_view_param(df_val, 'target', 'y_hat', param_col = 'Nm-all', 
+                      gauge_ids = val_guess, buffer_size=2, plot_title= 'Validation guess',
+                      cmap='Blues')
 
-# utils.grid_view_param(df_val, 'target', 'y_hat', param_col = 'Nm-all', 
-#                       gauge_ids = val_false, buffer_size=2, plot_title= 'Validation false',
-#                       cmap='Blues')
+utils.grid_view_param(df_val, 'target', 'y_hat', param_col = 'Nm-all', 
+                      gauge_ids = val_false, buffer_size=2, plot_title= 'Validation false',
+                      cmap='Blues')
 
 #%% Show NC benchmark results  with varying backgrounds 
 
@@ -236,7 +234,7 @@ df_coef = pd.DataFrame(lr_coefs[0], index = coef_names, columns=['Coefficients']
 
 #%% Display locations in model domain 
 
-utils.plot_locations(df_loc, x='lon', y='lat', plot_title='Gauge locations')
+# utils.plot_locations(df_loc, x='lon', y='lat', plot_title='Gauge locations')
 
 #%% Display results algorithm 
 
@@ -246,8 +244,8 @@ dict_algorithm={
     'false': [int(v) for v in val_false]
     }
 
-utils.plot_locations(df_loc, x='lon', y='lat', gauge_labels=dict_algorithm, label_key='gauge_id',
-                     plot_title='Algorithm results')
+# utils.plot_locations(df_loc, x='lon', y='lat', gauge_labels=dict_algorithm, label_key='gauge_id',
+#                      plot_title='Algorithm results')
 
 #%% Display results nearest cell benchmark 
 dict_nc={
@@ -255,13 +253,13 @@ dict_nc={
     'false': [int(v) for v in nc_false]
     }
 
-utils.plot_locations(df_loc, x='lon', y='lat', gauge_labels=dict_nc, label_key='gauge_id',
-                     plot_title='Benchmark NC results')
+# utils.plot_locations(df_loc, x='lon', y='lat', gauge_labels=dict_nc, label_key='gauge_id',
+                     # plot_title='Benchmark NC results')
 
 
 #%% Display timeseries 
 
-utils.plot_timeseries(df_ts, df_val, show_list = val_true)
+# utils.plot_timeseries(df_ts, df_val, show_list = val_true)
 
 
 
