@@ -78,6 +78,16 @@ df_results = utils.k_fold_CV(df, k=10)
 df_prob = df_results[ df_results['cat'] == 'prob'] 
 print(df_prob.describe())
 
+#%% Get k_fold classification results 
+
+print('-----'*10)
+print('K fold Cross Validation')
+print('-----'*10)
+
+df_results = utils.k_fold_CV(df, k=5) 
+df_prob = df_results[ df_results['cat'] == 'prob'] 
+print(df_prob.describe())
+
 #%% Leave one out CV 
 print()
 print('-----'*10)
