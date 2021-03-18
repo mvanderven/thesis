@@ -13,9 +13,10 @@ import cartopy as cp
 import cartopy.feature as cfeature
 
 
-from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, f1_score, mean_squared_error 
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import mean_squared_error 
+from sklearn.model_selection import train_test_split 
+from sklearn.preprocessing import MinMaxScaler
 
 
 def subsample(df, target_col, target_value = 1., n_frac = 1.):
@@ -66,7 +67,7 @@ def train_logistic_regressor(X_train, y_train):
 
 
 
-def buffer_validation(df, target_col, model, scaler): 
+def buffer_validation(df, target_col, model, scaler, verbose = 1 ): 
     
     ## set counters 
     n_gauges = 0 
@@ -147,16 +148,17 @@ def buffer_validation(df, target_col, model, scaler):
                 else:
                     id_false.append(gauge_id)
                     # print(buffer_df)
- 
-    print()
-    print('-----'*10)    
-    print('Logistic Regression')    
-    print('Total found: {}/{} ({:.2f}%)'.format( n_correct, n_gauges, (n_correct/n_gauges)*100) )
-    print('Found in guess-range: {}/{} ({:.2f}%)'.format( n_guess, n_gauges, (n_guess/n_gauges)*100)  )
-    print('In total: {}/{} ({:.2f}%) guessed'.format( n_guess, 
-                                                      n_gauges,
-                                                      (n_guess/n_gauges)*100))
-    print('-----'*10)    
+    
+    if verbose == 1:
+        print()
+        print('-----'*10)    
+        print('Logistic Regression')    
+        print('Total found: {}/{} ({:.2f}%)'.format( n_correct, n_gauges, (n_correct/n_gauges)*100) )
+        print('Found in guess-range: {}/{} ({:.2f}%)'.format( n_guess, n_gauges, (n_guess/n_gauges)*100)  )
+        print('In total: {}/{} ({:.2f}%) guessed'.format( n_guess, 
+                                                          n_gauges,
+                                                          (n_guess/n_gauges)*100))
+        print('-----'*10)    
     return return_df, id_true, id_guess, id_false
 
 
@@ -522,7 +524,6 @@ def plot_timeseries(df, df_label, show_list = None, plot_title=None, label_list 
         collect_ts = df[cols]  
         
                 
-        # plt.figure(figsize=(12,4)) 
         if len(show_list) < 6:
             ax = fig.add_subplot( len(show_list), 1, int(i+1) )
         else:
@@ -546,6 +547,96 @@ def plot_timeseries(df, df_label, show_list = None, plot_title=None, label_list 
     plt.tight_layout()
     
     return 
+
+
+def k_fold_CV(df, k = 10, target_col='target'): 
+    
+    unique_gauges = df['gauge_id'].unique() 
+    
+    k_train = [] 
+    k_test = [] 
+    k_val = [] 
+    k_prob = []
+    
+    for i in range(k): 
+                
+        ## split gauges 
+        gauges_train_test, gauges_validation= train_test_split(unique_gauges, test_size = 0.15) 
+        
+        ## create new dfs 
+        df_train_test = df[ df['gauge_id'].isin(gauges_train_test) ] 
+        df_validation = df[ df['gauge_id'].isin(gauges_validation) ] 
+        
+        ## subsample df_train_test  
+        df_train_test_sample = subsample(df_train_test, target_col, n_frac = 1) 
+        
+        ## split df_train_test_sample into train and test set 
+        X_train, X_test, y_train, y_test = train_test_split( df_train_test_sample.drop([ 'gauge_id', target_col], axis=1), 
+                                                            df_train_test_sample[target_col],
+                                                            test_size = 0.15) 
+              
+        ## normalize X_train, apply on X_val 
+        sc = MinMaxScaler([0,1]) 
+        ## train scaler 
+        X_train = sc.fit_transform(X_train) 
+        ## apply on validation data 
+        X_test = sc.transform(X_test) 
+        
+        ## train model 
+        lr_model = train_logistic_regressor(X_train, y_train) 
+        
+        ## training performance 
+        y_hat_train = lr_model.predict(X_train)
+        ## validation performance 
+        y_hat_test = lr_model.predict(X_test) 
+        
+        ## run on validation data 
+        df_val, val_true, val_guess, val_false = buffer_validation(df_validation, target_col, lr_model, sc, verbose=0) 
+        
+        y_val = df_val['target'] 
+        y_hat_val = df_val['y_hat']
+        y_hat_prob = df_val['y_hat_prob']
+        
+        ## collect results 
+        k_train.append([ accuracy_score(y_train, y_hat_train), precision_score(y_train, y_hat_train), 
+                        recall_score(y_train, y_hat_train), f1_score(y_train, y_hat_train) ])
+        
+        k_test.append([accuracy_score(y_test, y_hat_test), precision_score(y_test, y_hat_test), 
+                        recall_score(y_test, y_hat_test), f1_score(y_test, y_hat_test)]) 
+        
+        k_val.append([accuracy_score(y_val, y_hat_val), precision_score(y_val, y_hat_val), 
+                        recall_score(y_val, y_hat_val), f1_score(y_val, y_hat_val)]) 
+        
+        k_prob.append([accuracy_score(y_val, y_hat_prob), precision_score(y_val, y_hat_prob), 
+                        recall_score(y_val, y_hat_prob), f1_score(y_val, y_hat_prob)])
+        
+        
+    cols = ['acc', 'prec', 'rec', 'f1']
+    k_train = np.array(k_train).mean(axis=0)
+    k_test = np.array(k_test).mean(axis=0)
+    k_val = np.array(k_val).mean(axis=0)
+    k_prob= np.array(k_prob).mean(axis=0)
+    
+    df = pd.DataFrame( [k_train, k_test, k_val, k_prob], columns = cols, index = ['train', 'test', 'method1', 'method2'] ) 
+        
+    return df 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
