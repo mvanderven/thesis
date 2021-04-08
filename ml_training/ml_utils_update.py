@@ -195,16 +195,12 @@ def Kfold_CV(df_labels, id_col, y_col, k = 5, methods = ['LogisticRegressor'], d
     benchmark_options = ['RMSE', 'NSE', 'NC']
     method_options = ml_alg_options+benchmark_options 
     
-    # assert method.lower() in [option.lower() for option in method_options], 'defined method "{}" not found in options: {}'.format(method,
-                                                                                                                                  # method_options)  
-
     ## check number K
     assert k <= df_labels[id_col].nunique(), '[ERROR] k={} too large for n={}'.format( k, df_labels[id_col].nunique() )
     
     print('-----'*10)
     print('{} fold Cross Validation'.format(k))
     print('-----'*10)
-    
     
     ## get list with gauge IDs
     gauge_ids = df_labels[id_col].unique() 
@@ -240,7 +236,6 @@ def Kfold_CV(df_labels, id_col, y_col, k = 5, methods = ['LogisticRegressor'], d
                         test = split_gauges[:i] + split_gauges[i+1:]
                     
                     gauges_train_val = [item for sublist in test for item in sublist] 
-                    
                     
                     ## split gauges_train_val into train and validation set 
                     gauges_train, gauges_val = train_test_split(gauges_train_val, test_size= 1./(k-1) ) 
@@ -279,25 +274,25 @@ def Kfold_CV(df_labels, id_col, y_col, k = 5, methods = ['LogisticRegressor'], d
                     sc = MinMaxScaler([0,1]) 
                     ## train scaler 
                     X_train = sc.fit_transform(X_train) 
-        
                     
+                    ## train model
+                    lr = LogisticRegression() 
+                    lr.fit(X_train, y_train)
+                    
+                    ## predict 
+                    hat_col = '{}_hat'.format(y_col)
+                    
+                    ## y_hat_training
+                    y_hat_train = lr.predict(X_train) 
+                    df_train.loc[df_train.index, hat_col ] = y_hat_train
+                    
+                    ## asses performance 
                     if method.lower() == 'logisticregressor-1':
-                        
-                        ## train model
-                        lr = LogisticRegression() 
-                        lr.fit(X_train, y_train)
-                        
-                        ## predict 
-                        hat_col = '{}_hat'.format(y_col)
-                        
-                        ## y_hat_training
-                        y_hat_train = lr.predict(X_train) 
-                        df_train.loc[df_train.index, hat_col ] = y_hat_train
-                    
+                                            
                         ## BUFFER validation 
                         ## y_hat_validation 
-                        df_val, val_true, val_false, val_absent = LR_buffer_prediction(lr, sc, df_val, 
-                                                                                       id_col, y_col, hat_col) 
+                        # df_val, val_true, val_false, val_absent = LR_buffer_prediction(lr, sc, df_val, 
+                        #                                                                id_col, y_col, hat_col) 
                                         
                         ## y_hat_test
                         df_test, test_true, test_false, test_absent = LR_buffer_prediction(lr, sc, df_test, 
@@ -305,23 +300,12 @@ def Kfold_CV(df_labels, id_col, y_col, k = 5, methods = ['LogisticRegressor'], d
                                      
          
                     if method.lower() == 'logisticregressor-2':
-                        
-                        ## train model
-                        lr = LogisticRegression() 
-                        lr.fit(X_train, y_train)
-                        
-                        ## predict 
-                        hat_col = '{}_hat'.format(y_col)
-                        
-                        ## y_hat_training
-                        y_hat_train = lr.predict(X_train) 
-                        df_train.loc[df_train.index, hat_col ] = y_hat_train
-                    
+                                            
                         ## BUFFER validation 
                         ## y_hat_validation 
-                        df_val, val_true, val_false, val_absent = LR_buffer_prediction(lr, sc, df_val, 
-                                                                                       id_col, y_col, hat_col,
-                                                                                       method = 2) 
+                        # df_val, val_true, val_false, val_absent = LR_buffer_prediction(lr, sc, df_val, 
+                        #                                                                id_col, y_col, hat_col,
+                        #                                                                method = 2) 
                                                     
                         ## y_hat_test
                         df_test, test_true, test_false, test_absent = LR_buffer_prediction(lr, sc, df_test, 
@@ -374,6 +358,7 @@ def Kfold_CV(df_labels, id_col, y_col, k = 5, methods = ['LogisticRegressor'], d
                                    'prec': [ precision_score(df_test[y_col], df_test[hat_col]) ],
                                    'rec': [ recall_score(df_test[y_col], df_test[hat_col]) ],
                                    'f1': [ f1_score(df_test[y_col], df_test[hat_col]) ]}
+                    
                     df_results = df_results.append(pd.DataFrame(result_dict), ignore_index=True)
                             
     return df_results 
