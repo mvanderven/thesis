@@ -196,8 +196,12 @@ def calc_FDC(ts):
     ts_sorted = ts_drop.sort_values()
     
     ## calculate ranks of data 
-    ranks = stats.rankdata(ts_sorted, method='dense')
-
+    ## best rankdata method??
+    ## (1)method=ordinal: unique rank value 
+    ranks = stats.rankdata(ts_sorted, method='ordinal') 
+    ## (2) method=dense: duplicate Q values get same rank value
+    # ranks = stats.rankdata(ts_sorted, method='dense') 
+    
     ## reverse rank order
     ranks = ranks[::-1]
     
