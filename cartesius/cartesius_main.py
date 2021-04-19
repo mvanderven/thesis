@@ -58,8 +58,10 @@ def run_parallel(fn, efas_dir):
 if __name__ == '__main__':
     
     ## START
-    ## copy files from home dir to scratch 
+    ## copy TAR file from home dir to scratch 
     ...
+    
+    ## extract TAR file?
     
     ## run in parallel     
     ## process per year?
@@ -69,7 +71,7 @@ if __name__ == '__main__':
     print('\nSave output\n')
     df.to_csv('efas_timeseries.csv')
     
-    ## remove files from scratch 
+    ## remove files from scratch / move back to home dir
     ...
     
     ## FINISH

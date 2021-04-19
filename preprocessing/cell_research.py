@@ -100,13 +100,13 @@ plt.show()
 #%% Iteratively plot n occurences in increasingly larger 'buffer' 
 
 min_buffer_size = 0 
-max_buffer_size = 20
+max_buffer_size = 100
 delta_b = 5 
 vary_buffer_size = list(range(min_buffer_size, max_buffer_size+1, delta_b)) 
 
 size_found = []
 
-show_heatmap = True  
+show_heatmap = False  
 
 for buffer_size in vary_buffer_size:
     
