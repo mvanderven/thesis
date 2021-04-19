@@ -16,8 +16,8 @@ from cartesius_utils import load_efas, buffer_search
 #%% Set file paths 
 
 fn = 'V1_grdc_efas_selection-cartesius.csv'
-efas_dir = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\model_data\EFAS_6h")
-# efas_dir = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\model_data\EFAS_6h_test")
+# efas_dir = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\model_data\EFAS_6h")
+efas_dir = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\model_data\EFAS_6h_test")
 
 
 #%% Define function 
@@ -51,9 +51,7 @@ def run_parallel(fn, efas_dir):
         df_collect = df_collect.append(df_result) 
     return df_collect 
 
-
 #%% Run 
-
 
 if __name__ == '__main__':
     
