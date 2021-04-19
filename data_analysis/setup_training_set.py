@@ -53,7 +53,8 @@ print('Load gauge data')
 start_time = time.time()
 
 ## load gauge data 
-gauge_file_names = gauge_data_dict[gauge_keys[0]] 
+# gauge_file_names = gauge_data_dict[gauge_keys[0]]  ## V0 ~ 200 gauges 
+gauge_file_names = gauge_data_dict[gauge_keys[1]]  ## V1 ~ 802 gauges 
 
 ## get a sub-sample of gauge_file_names 
 n_samples = 0 
@@ -63,7 +64,7 @@ if n_samples > 0:
 ## load data 
 gauge_data_grdc, meta_grdc = utils.read_gauge_data( gauge_file_names, dtype='grdc')
 
-#%% Repoject gauge coordinates 
+# #%% Repoject gauge coordinates 
 coords_4326 = np.array( [gauge_data_grdc['lon'].values, gauge_data_grdc['lat'].values]).transpose()
 coords_3035 = utils.reproject_coordinates(coords_4326, 4326, 3035) 
 
@@ -79,7 +80,7 @@ print(gauge_data_grdc.head())
 #%% Set up time boundaries 
 
 start_date = '1991-01-01'
-end_date = '1991-12-31'
+end_date = '2020-12-31'
 
 T0 = datetime.datetime.strptime(start_date, '%Y-%m-%d').strftime('%Y-%m-%d')
 T1 = datetime.datetime.strptime(end_date, '%Y-%m-%d').strftime('%Y-%m-%d') 
@@ -129,7 +130,7 @@ gauge_locs = updated_gauge_locs
 
 #%% Load or create buffer 
 
-load_buffer_results = True
+load_buffer_results = False
 
 buffer_size = 2
 cell_size_efas = 5000       # m2 
@@ -141,11 +142,11 @@ if not load_buffer_results:
     
 
 
-    # collect_efas, fn_save_results = utils.buffer_search(
-    collect_efas = utils.buffer_search(
+    collect_efas, fn_save_results = utils.buffer_search(
+    # collect_efas = utils.buffer_search(
                                        efas_time, gauge_time,
                                        cell_size_efas, cell_size_efas, buffer_size,
-                                       save_csv=False, save_dir = model_data)
+                                       save_csv=True, save_dir = model_data)
     
     print('Buffer search done \n')
 
@@ -176,33 +177,45 @@ collect_timeseries, collect_locations = thesis_signatures.reshape_data(gauge_tim
                                                                        var='dis24',
                                                                        T1 = end_date)
 
-print("--- {:.2f} minutes ---\n\n".format( (time.time() - start_time)/60.) )
-
-#%% Show collected data
-
-print(collect_timeseries.head())
-
-#%% Remove missing values in model simulation data 
-missing_series = collect_timeseries.columns[ collect_timeseries.isnull().any()].tolist() 
-
-collect_timeseries = collect_timeseries.drop(columns=missing_series) 
-collect_locations = collect_locations.drop(index=missing_series)
-
-n_drop = len(missing_series)
-n_after_drop = collect_timeseries.shape[1]
-print('{} simulations dropped - {} remaining for analysis \n'.format(n_drop, n_after_drop))
-
-
-#%% Save cleaned up timeseries and location dataframes 
-
 fn_timeseries = model_data / 'collect_ts_obs_mod_{}_{}.csv'.format( datetime.datetime.today().strftime('%Y%m%d'), 
                                                                     buffer_size) 
 
 fn_locations = model_data / 'collect_loc_obs_mod_{}_{}.csv'.format( datetime.datetime.today().strftime('%Y%m%d'),
                                                                     buffer_size)
 
-# collect_timeseries.to_csv(fn_timeseries) 
-# collect_locations.to_csv(fn_locations)
+collect_timeseries.to_csv(fn_timeseries) 
+collect_locations.to_csv(fn_locations)
+
+
+
+
+print("--- {:.2f} minutes ---\n\n".format( (time.time() - start_time)/60.) )
+
+#%% Show collected data
+
+print(collect_timeseries.head())
+
+
+#%% Remove missing values in model simulation data 
+# missing_series = collect_timeseries.columns[ collect_timeseries.isnull().any()].tolist() 
+
+# collect_timeseries = collect_timeseries.drop(columns=missing_series) 
+# collect_locations = collect_locations.drop(index=missing_series)
+
+# n_drop = len(missing_series)
+# n_after_drop = collect_timeseries.shape[1]
+# print('{} simulations dropped - {} remaining for analysis \n'.format(n_drop, n_after_drop))
+
+#%% Save cleaned up timeseries and location dataframes 
+
+fn_timeseries = model_data / 'collect_ts_obs_mod_{}_{}-filtered.csv'.format( datetime.datetime.today().strftime('%Y%m%d'), 
+                                                                    buffer_size) 
+
+fn_locations = model_data / 'collect_loc_obs_mod_{}_{}-filtered.csv'.format( datetime.datetime.today().strftime('%Y%m%d'),
+                                                                    buffer_size)
+
+collect_timeseries.to_csv(fn_timeseries) 
+collect_locations.to_csv(fn_locations)
 
 
 #%% Signature calculation 
@@ -257,7 +270,7 @@ check_cols = [
     'bfi-all', 'dld-all', 'rld-all', 'rbf-all', 's_rc-all', 'T0_rc-all'
     ]
 
-print(efas_feature_table[check_cols].isnull().sum())
+# print(efas_feature_table[check_cols].isnull().sum())
 
 #%% Identify rows with missing values
 missing_rows = efas_feature_table[ efas_feature_table[check_cols].isnull().any(axis=1) ].index.to_list()
@@ -268,10 +281,15 @@ if len(missing_rows) >= 1:
     print('Remaining missing values: ', efas_feature_table[check_cols].isnull().sum().sum()  )
 
 #%% Save feature table values 
-# features_fn = gauge_data / 'unlabelled_features_{}_buffer_{}.csv'.format( datetime.datetime.today().strftime('%Y%m%d'),
-#                                                                         buffer_size)
-# efas_feature_table.to_csv(features_fn)
-# print('[INFO] features saved as csv:\n{}'.format(features_fn))                                                               
+features_fn = gauge_data / 'unlabelled_features_{}_buffer_{}.csv'.format( datetime.datetime.today().strftime('%Y%m%d'),
+                                                                        buffer_size)
+efas_feature_table.to_csv(features_fn)
+print('[INFO] features saved as csv:\n{}'.format(features_fn))       
+
+#%% 
+
+efas_feature_table = pd.read_csv(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\training_data\unlabelled_features_20210310_buffer_2.csv",
+                                 index_col=0)                                                        
 
 #%% Display feature cross-correlation
 
@@ -297,6 +315,7 @@ fig = plotter.display_cross_correlation(efas_feature_table, cols_analysis)
 
 #%%  Load labelled dataset 
 labelled_fn = gauge_data / "V0-grdc_efas_selection_20210309-1.csv" 
+# labelled_fn = gauge_data / "V1_grdc_efas_selection_20210319.csv"
 df_labels = pd.read_csv(labelled_fn)
 
 ### COLUMNS OF INTEREST 
@@ -319,13 +338,17 @@ features_matched = utils.match_label(efas_feature_table, df_labels,
                                      'updated_GRDC_ID', 'StationX', 'StationY')
 
 #%% 
+
+cell_matches = features_matched[ features_matched['match_obs']==1.]
+
+#%% 
 features_labelled_fn = gauge_data / 'labelled_features_{}_buffer_{}.csv'.format( datetime.datetime.today().strftime('%Y%m%d'),
                                                                         buffer_size)
 ## index = ID, so save index 
 features_matched.to_csv(features_labelled_fn) 
 
-load_fn = gauge_data / "labelled_features_20210310_buffer_2.csv"
-features_matched = pd.read_csv(load_fn, index_col=0)
+# load_fn = gauge_data / "labelled_features_20210310_buffer_2.csv"
+# features_matched = pd.read_csv(load_fn, index_col=0)
                                 
 #%% Calculate similarity vectors 
 
@@ -339,7 +362,7 @@ similarity_vectors = utils.calc_similarity_vector(features_matched,
 similarity_fn = gauge_data / 'similarity_vector_labelled_buffer_{}-{}.csv'.format(buffer_size,
                                                                               datetime.datetime.today().strftime('%Y%m%d'))
 
-# similarity_vectors.to_csv(similarity_fn)
+similarity_vectors.to_csv(similarity_fn)
 
 #%% Show total time duration 
 print("--- {:.2f}s seconds ---".format(time.time() - start_time_overall))

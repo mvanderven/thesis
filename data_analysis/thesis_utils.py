@@ -597,19 +597,20 @@ def match_label(df_features, df_match,
     
     ## get gauge IDs from labelled set 
     match_ids = df_match[match_id].astype('str').values
-        
+    
     ## filter feature_ids based on gauge match 
     for m_id in match_ids:
         
         ## get subset of df with features - without the gauge data 
-        subset_features = df_features[ (df_features[gauge_id] == m_id) & (df_features['is_gauge'] == 0)] 
+        subset_features = df_features[ (df_features[gauge_id] == int(m_id)) & (df_features['is_gauge'] == 0)] 
         
         ## extract the gauge from features 
-        gauge_data = df_features[ (df_features[gauge_id] == m_id) & (df_features['is_gauge'] == 1)] 
+        gauge_data = df_features[ (df_features[gauge_id] == int(m_id)) & (df_features['is_gauge'] == 1)] 
                 
         if len(subset_features) > 0:
 
             ## get gauge specific labelled data 
+            # loc_df = df_match[ df_match[match_id] == str(m_id)] 
             loc_df = df_match[ df_match[match_id] == int(m_id)] 
             
             ## get Lisflood XY coordinates & matching lat/lon coordinates 
@@ -629,6 +630,8 @@ def match_label(df_features, df_match,
             sort_df['dY'] = sort_df['Y'] - y_mapped
             sort_df['X_abs'] = sort_df['dX'].abs() 
             sort_df['Y_abs'] = sort_df['dY'].abs() 
+            
+            # print(sort_df)
                      
             ## sort based on absolute distances 
             sorted_df = sort_df.sort_values(by=['X_abs', 'Y_abs']) 
@@ -674,10 +677,10 @@ def match_label(df_features, df_match,
     df_features['match_obs']  = df_features['match_obs'].fillna(0)
 
     ## final check - only gauges with a match remain 
-    for match_id in df_features['match'].unique():
-        check_sum = df_features[ (df_features['match'] == match_id)]
-        if not check_sum['match_obs'].sum() > 0:
-            df_features = df_features.drop(index = check_sum.index)
+    # for match_id in df_features['match'].unique():
+    #     check_sum = df_features[ (df_features['match'] == match_id)]
+    #     if not check_sum['match_obs'].sum() > 0:
+    #         df_features = df_features.drop(index = check_sum.index)
 
     return df_features 
 
