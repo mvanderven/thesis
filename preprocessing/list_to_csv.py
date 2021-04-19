@@ -129,6 +129,10 @@ def prep_gauge_processing_file(fn_matches, gauge_dir, out_dir = None, out_fn = '
     
     ## filter on end year 
     out_df = out_df[ out_df['end_year'] >= 1991] 
+    
+    
+    ## analyse distances 
+    
                 
     ## return filename or dataframe 
     if save_file:
@@ -142,9 +146,9 @@ def prep_gauge_processing_file(fn_matches, gauge_dir, out_dir = None, out_fn = '
 
 #%% Run 
 
-# if __name__ == '__main__':
+if __name__ == '__main__':
     
-    # fn = prep_gauge_processing_file(match_data, gauge_data, out_dir = data_dir)
+    fn = prep_gauge_processing_file(match_data, gauge_data, out_dir = data_dir)
     
     
 
