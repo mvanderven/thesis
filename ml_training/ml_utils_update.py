@@ -313,16 +313,16 @@ def Kfold_CV(df_labels, id_col, y_col, k = 5, methods = ['LogisticRegressor'], d
                                                                                           method = 2)   
                                      
                     
-                    result_dict = {'n_it': [int(i+1)],
-                                   'method': [method.lower()], 
-                                   'n_true': [test_true], 
-                                   'n_false': [test_false], 
-                                   'n_out': [test_absent], 
-                                   'n_sample': [len(gauges_test)],
-                                   'acc': [  accuracy_score(df_test[y_col], df_test[hat_col]) ],
-                                   'prec': [ precision_score(df_test[y_col], df_test[hat_col]) ],
-                                   'rec': [ recall_score(df_test[y_col], df_test[hat_col]) ],
-                                   'f1': [ f1_score(df_test[y_col], df_test[hat_col]) ]}
+                    result_dict = {'n_it':      [ int(i+1) ],
+                                   'method':    [ method.lower() ], 
+                                   'n_true':    [ test_true ], 
+                                   'n_false':   [ test_false ], 
+                                   'n_out':     [ test_absent ], 
+                                   'n_sample':  [ len(gauges_test) ],
+                                   'acc':       [ accuracy_score(df_test[y_col], df_test[hat_col]) ],
+                                   'prec':      [ precision_score(df_test[y_col], df_test[hat_col]) ],
+                                   'rec':       [ recall_score(df_test[y_col], df_test[hat_col]) ],
+                                   'f1':        [ f1_score(df_test[y_col], df_test[hat_col]) ]}
                                         
                     df_results = df_results.append(pd.DataFrame(result_dict), ignore_index=True)     
                         
@@ -346,18 +346,17 @@ def Kfold_CV(df_labels, id_col, y_col, k = 5, methods = ['LogisticRegressor'], d
                                                                                               dx = 'x', dy = 'y')
                     
                     hat_col = '{}_hat'.format(y_col)
-                    ## calc acc, precision, recall, f1
                     
-                    result_dict = {'n_it': [int(i+1)], 
-                                   'method': [method.lower()], 
-                                   'n_true': [test_true], 
-                                   'n_false': [test_false], 
-                                   'n_out': [test_absent], 
-                                   'n_sample': [len(gauges_test)],
-                                   'acc': [  accuracy_score(df_test[y_col], df_test[hat_col]) ],
-                                   'prec': [ precision_score(df_test[y_col], df_test[hat_col]) ],
-                                   'rec': [ recall_score(df_test[y_col], df_test[hat_col]) ],
-                                   'f1': [ f1_score(df_test[y_col], df_test[hat_col]) ]}
+                    result_dict = {'n_it':      [ int(i+1) ], 
+                                   'method':    [ method.lower() ], 
+                                   'n_true':    [ test_true ], 
+                                   'n_false':   [ test_false ], 
+                                   'n_out':     [ test_absent ], 
+                                   'n_sample':  [ len(gauges_test) ],
+                                   'acc':       [ accuracy_score(df_test[y_col], df_test[hat_col]) ],
+                                   'prec':      [ precision_score(df_test[y_col], df_test[hat_col]) ],
+                                   'rec':       [ recall_score(df_test[y_col], df_test[hat_col]) ],
+                                   'f1':        [ f1_score(df_test[y_col], df_test[hat_col]) ]}
                     
                     df_results = df_results.append(pd.DataFrame(result_dict), ignore_index=True)
                             
