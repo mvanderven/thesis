@@ -16,8 +16,8 @@ from cartesius_utils import load_efas, buffer_search
 #%% Set file paths 
 
 fn = 'V1_grdc_efas_selection-cartesius.csv'
-# efas_dir = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\model_data\EFAS_6h")
-efas_dir = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\model_data\EFAS_6h_test")
+efas_dir = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\model_data\EFAS_6h")
+# efas_dir = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\model_data\EFAS_6h_test")
 
 
 #%% Define function 
@@ -42,7 +42,7 @@ def run_parallel(fn, efas_dir):
     ## map 
     results_parallel = p.map(buffer_search, test_ix, df_list, ds_list) 
     
-    print('{:.2f} minutes'.format( (time.time() - time_parallel)/60. )) 
+    print('{:.2f} minutes\n'.format( (time.time() - time_parallel)/60. )) 
     
     ## collect data
     ## reorder results_parallel
@@ -58,7 +58,7 @@ if __name__ == '__main__':
     df = run_parallel(fn, efas_dir)
     
     print(df)
-    print('########') 
+    print('\n########\n') 
     print(df.info())
     
 
