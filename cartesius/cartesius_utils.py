@@ -70,6 +70,8 @@ def buffer_search(gauge_id, df, ds, buffer_size = 2, cell_size = 5000., var = 'd
             ## add metadata 
             df_cell['gauge'] = gauge_id 
             df_cell['ID'] = 'cell_{}_{}{}'.format(gauge_id, i,j)
+            df_cell['x'] = buffer_x[i] 
+            df_cell['y'] = buffer_y[j]
             df_cell = df_cell.set_index('ID')
             
             ## append to output dataframe 
