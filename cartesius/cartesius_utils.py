@@ -8,19 +8,15 @@ Created on Fri Apr 16 16:21:29 2021
 import pandas as pd  
 import xarray as xr     
 
-def load_efas(efas_dir, do_resample_24hr = False): 
+def load_efas(efas_dir): 
 
     ## get file names in dir 
     files = [file for file in efas_dir.glob('*.nc')] 
     
     ## load list 
-    ds_out = xr.open_mfdataset(files, chunks = {"time": 10}) 
+    ## !! optimize chunks ??
+    ds_out = xr.open_mfdataset(files, chunks = {"time": 1000}) 
     
-    ## resample from 6 hourly data to 24 hourly data 
-    if do_resample_24hr:
-        ds_out = ds_out.resample(time="1D").mean() 
-        
-        ds_out = ds_out.rename( {'dis06': 'dis24'})
     
     ## rename variables for consistency
     ds_out = ds_out.rename(name_dict={  'latitude': 'lat',
@@ -57,6 +53,7 @@ def buffer_search(gauge_id, df, ds, buffer_size = 2, cell_size = 5000., var = 'd
     buffer_x = ds_buffer['x'].values 
     buffer_y = ds_buffer['y'].values 
     
+    ## slowest part ? read data into memory? 
     ## convert xarray to dataframe 
     df_buffer = ds_buffer.to_dataframe() 
 
@@ -78,3 +75,8 @@ def buffer_search(gauge_id, df, ds, buffer_size = 2, cell_size = 5000., var = 'd
             out_df = out_df.append(df_cell)
             
     return out_df 
+
+
+
+
+
