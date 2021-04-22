@@ -7,6 +7,7 @@ Created on Fri Apr 16 16:21:29 2021
 
 import pandas as pd  
 import xarray as xr     
+import time 
 
 def load_efas(efas_dir): 
 
@@ -14,9 +15,7 @@ def load_efas(efas_dir):
     files = [file for file in efas_dir.glob('*.nc')] 
     
     ## load list 
-    ## !! optimize chunks ??
-    ds_out = xr.open_mfdataset(files, chunks = {"time": 1000}) 
-    
+    ds_out = xr.open_mfdataset(files, chunks = {"time": 365}) 
     
     ## rename variables for consistency
     ds_out = ds_out.rename(name_dict={  'latitude': 'lat',
@@ -56,6 +55,9 @@ def buffer_search(gauge_id, df, ds, buffer_size = 2, cell_size = 5000., var = 'd
     ## slowest part ? read data into memory? 
     ## convert xarray to dataframe 
     df_buffer = ds_buffer.to_dataframe() 
+    
+    ## result is a multi-index array 
+    ## could try to go for non-multi index array?
 
     for i in range(len(buffer_x)):
         for j in range(len(buffer_y)):
@@ -76,6 +78,32 @@ def buffer_search(gauge_id, df, ds, buffer_size = 2, cell_size = 5000., var = 'd
             
     return out_df 
 
+def resample_efas(efas_dir, dir_out): 
+
+    ## get file names in dir 
+    files = [file for file in efas_dir.glob('*.nc')]  
+    
+    assert dir_out.exists(), '[ERROR] output dir does not exist'
+    
+    for file in files:
+        
+        print(file.name)
+        time_resample = time.time() 
+        
+        ds_out = xr.open_dataset(file) 
+        ds_out = ds_out.resample(time='1D').mean()
+        
+        ds_out = ds_out.rename(name_dict={    'latitude': 'lat',
+                                               'longitude': 'lon',
+                                               'dis06': 'dis24'}) 
+        
+        fn_out = '_'.join( file.name.split('_')[:-1])+ '_24h.nc'
+        dst_out = dir_out / fn_out 
+
+        ds_out.to_netcdf(dst_out)
+        print('Resampling finished in {:.2f} minutes\n'.format( (time.time() - time_resample)/60. ))
+
+    return dir_out 
 
 
 

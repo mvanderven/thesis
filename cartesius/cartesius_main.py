@@ -11,14 +11,14 @@ from pathlib import Path
 import time 
 import pathos as pa 
 
-from cartesius_utils import load_efas, buffer_search
+from cartesius_utils import load_efas, buffer_search, resample_efas
 
 #%% Set file paths 
 
 fn = 'V1_grdc_efas_selection-cartesius.csv'
 
-efas_main_dir = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\model_data\EFAS_6h") 
-efas_dirs = [sub_dir for sub_dir in efas_main_dir.glob('*')] 
+# efas_dir = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\model_data\EFAS_6h") 
+efas_dir = Path(r"F:\thesis_data\EFAS_6h")
 
 #%% Define function 
 
@@ -60,32 +60,28 @@ if __name__ == '__main__':
     
     ## START
     ## copy TAR file from home dir to scratch 
-    ...
-    
+ 
     ## extract TAR file?
-    ... 
+    print('[INFO] Start resampling')
+    ds = resample_efas(efas_dir, dir_out = Path(r"F:\thesis_data\EFAS_24h"))
     
     ## run in parallel     
     ## process per year?
-    df = pd.DataFrame() 
+    # df = run_parallel(fn, efas_dir)
     
-    for efas_dir in efas_dirs:
-        print('[INFO] run {}'.format(efas_dir.name))
-        _df = run_parallel(fn, efas_dir)  
-        df = df.append(_df)
     
     ## save output 
-    print('\nSave output\n')
-    df.to_csv(r"F:\thesis_data\efas_timeseries_1991-1992_chunk_1000.csv")
+    # print('\nSave output\n')
+    # df.to_csv(r"F:\thesis_data\efas_timeseries_1991-1992_chunk_1000.csv")
     
     ## remove files from scratch / move back to home dir
-    ...
+
     
     ## FINISH
     
-    print(df)
-    print('\n########\n') 
-    print(df.info())
+    # print(df)
+    # print('\n########\n') 
+    # print(df.info())
     
 
 
