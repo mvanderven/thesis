@@ -18,7 +18,11 @@ from cartesius_utils import load_efas, buffer_search, resample_efas
 fn = 'V1_grdc_efas_selection-cartesius.csv'
 
 # efas_dir = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\model_data\EFAS_6h") 
-efas_dir = Path(r"F:\thesis_data\EFAS_6h")
+# efas_dir = Path(r"F:\thesis_data\EFAS_6h")
+
+# efas_dir = Path("/scratch-shared/mizzivdv/efas_input/")
+efas_dir = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\model_data\EFAS_24hr")
+fn = efas_dir / 'V1_grdc_efas_selection-cartesius.csv'
 
 #%% Define function 
 
@@ -62,26 +66,46 @@ if __name__ == '__main__':
     ## copy TAR file from home dir to scratch 
  
     ## extract TAR file?
-    print('[INFO] Start resampling')
-    ds = resample_efas(efas_dir, dir_out = Path(r"F:\thesis_data\EFAS_24h"))
+    # print('[INFO] Start resampling')
+    # ds = resample_efas(efas_dir, dir_out = Path(r"F:\thesis_data\EFAS_24h"))
+        
+    ## get all efas files 
+    efas_files = [file for file in efas_dir.glob('*.nc')] 
     
-    ## run in parallel     
-    ## process per year?
-    # df = run_parallel(fn, efas_dir)
-    
-    
-    ## save output 
-    # print('\nSave output\n')
-    # df.to_csv(r"F:\thesis_data\efas_timeseries_1991-1992_chunk_1000.csv")
-    
-    ## remove files from scratch / move back to home dir
+    ## group per year 
+    years = sorted( list( set([ int(file.name.split('_')[1]) for file in efas_files]) ) )
 
+    ## create output 
+    df = pd.DataFrame()
     
+    ## go over files per year 
+    for year in years:
+        print(year)
+        sorted_efas_files = [file for file in efas_dir.glob('EFAS_{}_*.nc'.format(year))]  
+        
+        ## run parallel 
+        _df = run_parallel(fn, sorted_efas_files, n_nodes = 4, buffer_size = 2)  
+        
+        ## save intermediate steps 
+        print('Save tmp')
+        tmp_fn = efas_dir / 'tmp_{}.csv'.format(year) 
+        _df.to_csv(tmp_fn)
+        
+        ## append to output 
+        df = df.append(_df) 
+        
+        _df = None 
+            
+    ## save output 
+    print('\nSave output\n')
+    ## for test
+    out_fn =  efas_dir / "efas_timeseries_1991-1992_test.csv"
+    df.to_csv( out_fn)
+     
     ## FINISH
-    
-    # print(df)
-    # print('\n########\n') 
-    # print(df.info())
+    print(df)
+    print('\n########\n') 
+    print(df.info())
     
 
 

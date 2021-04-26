@@ -9,22 +9,26 @@ import pandas as pd
 import xarray as xr     
 import time 
 
-def load_efas(efas_dir): 
+def load_efas(files): 
 
     ## get file names in dir 
-    files = [file for file in efas_dir.glob('*.nc')] 
+    ## test run 
+    # files = [file for file in efas_dir.glob('EFAS_1991_*.nc')] 
+    
+    ## final run
+    # files = [file for file in efas_dir.glob('*.nc')] 
     
     ## load list 
-    ds_out = xr.open_mfdataset(files, chunks = {"time": 365}) 
+    ds_out = xr.open_mfdataset(files, chunks = {"time": 30}) 
     
     ## rename variables for consistency
-    ds_out = ds_out.rename(name_dict={  'latitude': 'lat',
-                                        'longitude': 'lon'})
+    # ds_out = ds_out.rename(name_dict={  'latitude': 'lat',
+    #                                     'longitude': 'lon'})
     
     return ds_out 
 
 
-def buffer_search(gauge_id, df, ds, buffer_size = 2, cell_size = 5000., var = 'dis06'): 
+def buffer_search(gauge_id, df, ds, buffer_size = 2, cell_size = 5000., var = 'dis24'): 
         
     ## create empty output dataframe
     out_df = pd.DataFrame()
@@ -58,6 +62,7 @@ def buffer_search(gauge_id, df, ds, buffer_size = 2, cell_size = 5000., var = 'd
     
     ## result is a multi-index array 
     ## could try to go for non-multi index array?
+    # print(df_buffer.head())
 
     for i in range(len(buffer_x)):
         for j in range(len(buffer_y)):
@@ -91,6 +96,7 @@ def resample_efas(efas_dir, dir_out):
         time_resample = time.time() 
         
         ds_out = xr.open_dataset(file) 
+
         ds_out = ds_out.resample(time='1D').mean()
         
         ds_out = ds_out.rename(name_dict={    'latitude': 'lat',
@@ -99,8 +105,18 @@ def resample_efas(efas_dir, dir_out):
         
         fn_out = '_'.join( file.name.split('_')[:-1])+ '_24h.nc'
         dst_out = dir_out / fn_out 
-
-        ds_out.to_netcdf(dst_out)
+        
+        clevel = 5
+        ds_out.to_netcdf(dst_out, encoding={'dis24': {'zlib': True, 'complevel': clevel},
+                                            'time': {'zlib': True, 'complevel': clevel},
+                                            'x': {'zlib': True, 'complevel': clevel},
+                                            'y': {'zlib': True, 'complevel': clevel},
+                                            'lat': {'zlib': True, 'complevel': clevel},
+                                            'lon': {'zlib': True, 'complevel': clevel},
+                                            'upArea': {'zlib': True, 'complevel': clevel},
+                                            'lambert_azimuthal_equal_area': {'zlib': True, 'complevel': clevel},
+                                            'land_binary_mask': {'zlib': True, 'complevel': clevel}})
+        
         print('Resampling finished in {:.2f} minutes\n'.format( (time.time() - time_resample)/60. ))
 
     return dir_out 
