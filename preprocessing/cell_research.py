@@ -19,8 +19,8 @@ import seaborn as sns
 gauge_dir = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\code\cartesius")
 fn_gauges = gauge_dir / 'V1_grdc_efas_selection-cartesius.csv'
 
-efas_dir = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\model_data\EFAS_6h_test") 
-efas_file = [file for file in efas_dir.glob('*.nc')][0]
+efas_dir = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\model_data\EFAS_6h") 
+efas_file = [file for file in efas_dir.rglob('*.nc')][0]
 
 
 #%% Load data 
