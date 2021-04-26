@@ -41,7 +41,6 @@ print('File names loaded \n')
 #%% Load EFAS data 
 
 print('Load EFAS data')
-# efas_dir = model_data_dict[keys_efas[1]] ## three months 
 efas_dir = model_data_dict[keys_efas[0]]   ## one year 
 
 ds_efas = utils.open_efas(efas_dir, dT='06', do_resample_24h = True)
@@ -53,11 +52,11 @@ print('Load gauge data')
 start_time = time.time()
 
 ## load gauge data 
-# gauge_file_names = gauge_data_dict[gauge_keys[0]]  ## V0 ~ 200 gauges 
-gauge_file_names = gauge_data_dict[gauge_keys[1]]  ## V1 ~ 802 gauges 
+gauge_file_names = gauge_data_dict[gauge_keys[0]]  ## V0 ~ 200 gauges 
+# gauge_file_names = gauge_data_dict[gauge_keys[1]]  ## V1 ~ 802 gauges 
 
 ## get a sub-sample of gauge_file_names 
-n_samples = 0 
+n_samples = 10 
 if n_samples > 0:
     gauge_file_names = np.random.choice(gauge_file_names, n_samples) 
     
@@ -143,7 +142,6 @@ if not load_buffer_results:
 
 
     collect_efas, fn_save_results = utils.buffer_search(
-    # collect_efas = utils.buffer_search(
                                        efas_time, gauge_time,
                                        cell_size_efas, cell_size_efas, buffer_size,
                                        save_csv=True, save_dir = model_data)

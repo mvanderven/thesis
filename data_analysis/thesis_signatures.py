@@ -41,6 +41,7 @@ for key in feature_keys:
 #### TIME WINDOW 
 option_time_window = ['all', 'annual', 'seasonal', 'monthly', 'weekly']
 time_format = {
+    'all':          [':'],
     'annual':       ['Y'],
     'seasonal':     [month%12 // 3 + 1 for month in range(1, 13)],
     'monthly':      ['M'],
@@ -700,4 +701,204 @@ def calc_features(collect_df, locations, features = feature_options, time_window
     
     print('[FINISH] calculating features ')
     return out_df 
+
+def calc_signatures(df_observations, df_simulations, id_col = 'loc_id',
+                    features = feature_options, time_window = option_time_window,
+                    fdc_q = [1, 5, 10, 50, 90, 95, 99],
+                    n_alag = [1,365], n_clag = [0,1]):
+    
+    df_out = pd.DataFrame()
+    
+    ## organize features 
+    stat_features =  [feat for feat in features if feat in stat_options]
+    corr_features =  [feat for feat in features if feat in corr_options]
+    fdc_features =   [feat for feat in features if feat in fdc_options]
+    hydro_features = [feat for feat in features if feat in hydro_options] 
+    
+    for i, gauge_id in enumerate( df_observations[id_col].unique() ):
+    
+        gauge_ts = df_observations[ df_observations[id_col] == gauge_id][['date', 'value']].copy()
+        gauge_ts['time'] = gauge_ts['date'] 
+        gauge_ts = gauge_ts.set_index('time')
+        
+        cell_cols = [col for col in df_simulations.columns if gauge_id in col]
+        df_buffer = df_simulations[cell_cols].copy() 
+        
+        gauge_col = 'gauge_{}'.format(gauge_id)
+        df_buffer[gauge_col] = gauge_ts['value'] 
+        
+        ## how to handle missing data?
+        gauge_null_mask = gauge_ts.isnull().any(axis=1) 
+        
+        ## get ID values 
+        ts_idx = df_buffer.columns  
+        
+        ## set temporary df to collect gauge output 
+        tmp_df = pd.DataFrame()
+        tmp_df['ID'] = ts_idx  
+        
+        ## create time window columns 
+        for tw in time_window:
+
+            date_ix = df_buffer.index 
+            
+            if tw == 'all':
+                df_buffer['slice'] = 0 
+                                   
+            if tw == 'annual':
+                df_buffer['slice'] = date_ix.year 
+            
+            if tw == 'seasonal':
+                time_windows = dict(zip(range(1,13), time_format[tw])) 
+                df_buffer['slice'] = date_ix.month.map(time_windows)
+                
+            if tw == 'monthly':
+                df_buffer['slice'] = date_ix.month 
+
+            if tw == 'weekly':
+                df_buffer['slice'] = date_ix.isocalendar().week
+                
+            
+            ## go over time windows and calc
+            for time_index in df_buffer['slice'].unique(): 
+                                
+                tw_buffer = df_buffer[ df_buffer['slice'] == time_index][ts_idx] 
+                
+                if tw == 'all':
+                    result_name = 'all' 
+                else:
+                    result_name = '{}_{}'.format(tw, time_index)
+                
+                for feature in features:
+                    
+                    if feature in stat_features:
+                        print('[CALC] ', feature) 
+                                                
+                        ## get expected column names 
+                        return_cols = func_dict[feature]['cols'] 
+            
+                        ## calculate statistics 
+                        cdf = tw_buffer.apply(func_dict[feature]['func']) 
+                                                
+                        ## add to results 
+                        for i, col in enumerate(return_cols):
+                            col_name = col.format( result_name )
+                            tmp_df[ col_name ] = cdf.loc[i,: ].values 
+                            
+                            
+                    if feature in corr_features: 
+                        print('[CALC] ', feature) 
+                        
+                        if 'n-acorr' in feature:
+                            
+                            ## get expected column names 
+                            return_cols = func_dict[feature]['cols'] 
+                            
+                            ## loop throug given lag times 
+                            for i, lag in enumerate(n_alag):
+
+                                ## check if lag time smaller than total timeseries time 
+                                if lag < len(tw_buffer):
+                                    cdf = tw_buffer.apply( func_dict[feature]['func'], lag = lag ) 
+                                    
+                                    for j, col in enumerate(return_cols):
+                                        col_name = col.format(lag, result_name) 
+                                        tmp_df[ col_name ] = cdf.values 
+                        
+                        if 'n-ccorr' in feature:
+                            return_cols = func_dict[feature]['cols'][0] 
+                            
+                            for i, lag in enumerate(n_clag):
+                                
+                                col_name = return_cols.format( lag, result_name )
+                                                                
+                                if lag < len(tw_buffer):
+                                    
+                                    for gauge_id in ts_idx:
+                                        cross_corr = func_dict[feature]['func']( tw_buffer[gauge_col], tw_buffer[gauge_id], lag=lag  ) 
+                                        tmp_df.loc[ tmp_df['ID'] == gauge_id, col_name ] = cross_corr 
+
+                    if feature in fdc_features:
+                        print('[CALC] ', feature) 
+                        
+                        if 'fdc-q' in feature: 
+                            
+                            try:
+                                cdf = tw_buffer.apply(func_dict[feature]['func'], fdc_q = fdc_q) 
+                            except:
+                                cdf = None
+                            
+                            for i, q in enumerate(fdc_q ):
+                                col_name = func_dict[feature]['cols'][0].format(q, result_name) 
+                                if cdf is not None:
+                                    tmp_df[col_name] = cdf.loc[i,:].values
+                        
+                        else:
+                            return_col = func_dict[feature]['cols'][0].format(result_name) 
+
+                            try:
+                                cdf = tw_buffer.apply(func_dict[feature]['func'])
+                                tmp_df[return_col] = cdf.values 
+                            except:
+                                cdf = None 
+                                                           
+                                             
+                        
+                    if feature in hydro_features:
+                        print('[CALC] ', feature)  
+                        
+                        return_cols = func_dict[feature]['cols'] 
+                        
+                        try:
+                            cdf = tw_buffer.apply(func_dict[feature]['func'])
+                        except:
+                            cdf = None
+                        
+                        if cdf is not None:
+                            
+                            if len(return_cols) > 1:
+                                for i, col in enumerate(return_cols):
+                                    col_name = col.format(result_name) 
+                                    tmp_df[col_name] = cdf.loc[i,:].values
+                            
+                            else:
+                                col_name = return_cols[0].format(tw)
+                                tmp_df[col_name] = cdf.values 
+                                            
+        tmp_df = tmp_df.set_index('ID')    
+        df_out = df_out.append(tmp_df)
+                
+    return df_out
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
