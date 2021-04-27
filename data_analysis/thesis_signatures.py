@@ -167,26 +167,9 @@ def calc_distr_poisson(ts):
 ###### CORRELATION ######
 
 def calc_auto_correlation(ts, lag=0):
-        
-    # if lag > 0:
-    #     ts0 = ts[0:-lag]
-    #     ts1 = ts[lag:]
-    # if lag ==0:
-    #     ts0 = ts
-    #     ts1 = ts        
-    # # return stats.pearsonr(ts0,ts1)[0]
     return ts.corr(ts.shift(lag))
 
 def calc_cross_correlation(ts0, ts1, lag=0):   
-        
-    # if lag > 0:
-    #     ts0 = ts0[0:-lag]
-    #     ts1 = ts1[lag:] 
-    # if lag == 0:
-    #     ts0 = ts0 
-    #     ts1 = ts1 
-    # # if lag < 0:
-    # return stats.pearsonr(ts0, ts1)[0]
     return ts0.corr(ts1.shift(lag))
 
 ########## FDC ##########
