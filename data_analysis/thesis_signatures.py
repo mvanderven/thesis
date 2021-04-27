@@ -176,6 +176,11 @@ def calc_cross_correlation(ts0, ts1, lag=0):
 
 def calc_FDC(ts):
     
+    ## FROM
+    ## Searcy (1959) Flow-Duration Curves
+    ##      Total period method: all discharges placed
+    ##      according of magnitude
+    
     ## drop missing values 
     ts_drop = ts.dropna() 
     
@@ -183,18 +188,19 @@ def calc_FDC(ts):
     ts_sorted = ts_drop.sort_values()
     
     ## calculate ranks of data 
-    ## best rankdata method??
+    ## rankdata methods:
     ## (1)method=ordinal: unique rank value 
     ranks = stats.rankdata(ts_sorted, method='ordinal') 
     ## (2) method=dense: duplicate Q values get same rank value
     # ranks = stats.rankdata(ts_sorted, method='dense') 
     
     ## reverse rank order
-    ranks = ranks[::-1]
+    ranks = ranks[::-1] 
     
     ## calculate probability 
-    prob = ((ranks / (len(ts)+1))) * 100
+    prob = ((ranks / (len(ts_sorted)+1) )) * 100 
     return prob, ts_sorted 
+
 
 def calc_FDC_q(ts, fdc_q):
     return_q = []
@@ -212,13 +218,25 @@ def calc_FDC_slope(ts, eps = 10e-6):
     
     #### from: https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R
     ####
-    #### FDC slope from Sawicz et al. (2011)
-    #### log(33)-log(66)/(0.66-0.33)    
+    #### FDC slope calculation procedure from:
+    ####    Sawicz et al. (2011) Catchment classifcation: empirical analysis
+    ####    of hydrological similarity based on catchment function in the
+    ####    eastern USA
+    ####
+    #### FDC_slope = log(Q_33)-log(Q_66)/(0.66-0.33)    
+    
+    ## calculate FDC_Q33 and Q_66
     Q33, Q66 = calc_FDC_q(ts, [33, 66])  
     return (np.log10(Q33+eps) - np.log10(Q66+eps)) / (0.66-0.33)
 
 def calc_LF_ratio(ts, eps = 10e-6):    
-    Q90, Q50 = calc_FDC_q(ts, [90, 50])
+    
+    #### Low Flow Ratio calculation from:
+    ####    Nijzink et al. (2018) Constraining conceptual hydrological
+    ####    models with multiple information sources
+    ####
+    #### LF = FDC_Q90 / FDC_Q50
+    Q90, Q50 = calc_FDC_q(ts, [90, 50]) 
     return (Q90+eps) / (Q50+eps)
 
 
@@ -226,23 +244,47 @@ def calc_LF_ratio(ts, eps = 10e-6):
 
 def calc_limb_slope(ts):
     
-    ### calc if rising or declining limb between
-    ### two points 
-    slope = ts.diff() 
-        
-    ### calcualate number of peaks
-    ### where d_ts[i] > 0 and d_ts[i+1] < 0 
-    N_peaks = 0 
+    #### Morin et al. (2002) Objective, observations-based automatic
+    #### estimation of catchment response timescale: 
+    ####    Indicate if slope of hydrograph increases (+1) or decreases (-1) 
+    ####    "A peak is a series of +1 points followed by -1 points, possibly
+    ####    with zeros in between"
     
-    ### IMPROVE 
-    for i in range(len(slope)-1):
-        if slope[i] > 0 and slope[i+1]<0:
-            N_peaks += 1     
-            
-    return slope, N_peaks
+    #### Shamir et al. (2005) The role of hydrograph indices
+    #### in parameter estimation of rainfall-runoff models 
+    ####    All time steps showing a positive or negative change from 
+    ####    previous time step, regardless of magnitude of change, were 
+    ####    included in calculation of cumulative duration of rising or
+    ####    declining steps. 
+    ####
+    ####    A peak is defined as a time step that has a higher value from
+    ####    previous and latter time steps
+    
+    ## calculate differences between time steps 
+    ts_diff = ts.diff()  
+    
+    ## indicate if increase or decrease between time steps 
+    ts_slope = np.where( ts_diff > 0, 1, -1)
+    
+    ## detect peaks
+    ## where a +1 point is followed by a -1 point 
+    mask_peaks = (ts_slope[:-1] > 0) & (ts_slope[1:] < 0)
+    return ts_diff, mask_peaks.sum()
 
 
 def calc_RLD(ts):
+    
+    #### From:
+    ####    Morin et al. (2002) Objective, observations-based automatic
+    ####    estimation of catchment response timescale 
+    
+    #### Peak Density = 
+    ####            Total peak numbers / total rising limb duration 
+    ####    "Peak is a series of +1 (positive slope hydrograph) points
+    ####    followed by -1 (negative slope hydrograph) points, possibly
+    ####    with zeros in between"
+    ####
+    #### Also known as: Rising Limb Density
     
     slope, N_peaks = calc_limb_slope(ts)
     
@@ -255,6 +297,15 @@ def calc_RLD(ts):
     return N_peaks/T_rising_limbs.days
 
 def calc_DLD(ts):
+    
+    #### Derived from "Peak Density" by Morin et al. (2002).
+    #### Expanded by:
+    ####    Shamir et al. (2005) The role of hydrograph indices
+    ####    in parameter estimation of rainfall-runoff models
+    
+    #### Declining limb density = 
+    ####              total peak numbers / total declining limb duration
+                               
     
     slope, N_peaks = calc_limb_slope(ts)
     
