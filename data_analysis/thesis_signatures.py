@@ -71,7 +71,7 @@ def calc_gof(model, stat):
     
     ## KS-test     
     # D, p = stats.kstest(model, stat)
-    D, p = stats.ks_2samp(model, stat)
+    D, p = stats.ks_2samp(model, stat) 
     
     ## return result of K-test 
     ## if D greater than critical p-value --> rejected 
@@ -93,13 +93,12 @@ def calc_distr_normal(ts):
         
     ## calculate goodness of fit 
     ## create an artificial dataset based on
-    ## derived mu and sigma (rvs)
+    ## derived mu and sigma
     try:
         gof = calc_gof(ts, stats.norm.rvs(loc=mu, scale=sigma, size=len(ts)))
     except:
-        print(mu, sigma, len(ts)) 
-        print(ts)
         gof = 0
+        print(gof)
     return [mu, sigma, gof]
 
 def calc_distr_log(ts, eps=1e-6):
@@ -107,33 +106,39 @@ def calc_distr_log(ts, eps=1e-6):
     ## drop remaining missing values 
     ts = ts.dropna() 
     
+    ## transform 
     Y = np.log(ts+eps) 
     Y_mu = np.mean(Y)
     Y_sigma = np.std(Y)
+        
+    ## calculate goodness-of-fit 
+    ## create an artificial dataset
+    ## based on derived distribution
+    ## parameters 
+    gof = calc_gof(ts, stats.lognorm.rvs(s=Y_sigma, scale=np.exp(Y_mu), size=len(ts))) 
     
-    gof_Y = calc_gof(ts, stats.lognorm.rvs(s=Y_sigma, scale=np.exp(Y_mu), size=len(ts)))  
-     
-    # X_mu = np.exp(Y_mu)
-    # X_sigma = X_mu * Y_sigma 
-    
-    ## calculate goodness of fit 
-    ## create an artificial dataset based on
-    ## derived mu and sigma (rvs)
-    # gof_X = calc_gof(ts, stats.lognorm.rvs(s=X_sigma, scale=X_mu, size=len(ts))) 
+    ## alternative transformation - similar results  
+    # Y_mu_alt = np.log( np.mean(ts)**2 / (( np.mean(ts)**2 + np.std(ts)**2 )**0.5 )  )
+    # Y_sigma_alt = (np.log( 1 + ((np.std(ts)/np.mean(ts))**2) ))**0.5
+    # gof = calc_gof(ts, stats.lognorm.rvs(s=Y_sigma_alt, scale=np.exp(Y_mu_alt), size=len(ts))) 
 
-    return [Y_mu, Y_sigma, gof_Y]
+    return [Y_mu, Y_sigma, gof]
 
 def calc_distr_gev(ts):
     
     ## drop remaining missing values 
     ts = ts.dropna() 
     
+    ## calculate gev parameters 
+    ## gumbel, so k = 0
     a = np.pi / ((6**0.5)*np.std(ts))
     u = np.mean(ts) - (0.577/a)
+    
     ## calculate goodness of fit 
     ## create an artificial dataset based on
     ## derived a and u 
-    gof = calc_gof(ts, stats.genextreme.rvs(c=0, loc = u, scale = a, size=len(ts)))
+    gof = calc_gof(ts, stats.genextreme.rvs(c=0, loc = u, scale = a, size=len(ts))) 
+    
     return [u,a, gof]
 
 def calc_distr_gamma(ts):
@@ -141,6 +146,7 @@ def calc_distr_gamma(ts):
     ## drop remaining missing values 
     ts = ts.dropna() 
     
+    ## calculate gamma parameters 
     mu = np.mean(ts)
     sigma = np.std(ts)
 
@@ -151,10 +157,7 @@ def calc_distr_gamma(ts):
     ## create an artificial dataset based on
     ## derived k and theta (rvs)
     gof = calc_gof(ts, stats.gamma.rvs(a = k, scale = theta, size=len(ts)))
-
-    # alpha = shape_k 
-    # beta = 1 / scale_theta 
-    # return [alpha, beta]
+    
     return [k, theta, gof]
 
 def calc_distr_poisson(ts):
