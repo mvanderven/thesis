@@ -287,9 +287,9 @@ def calc_RLD(ts):
     #### Also known as: Rising Limb Density
     
     slope, N_peaks = calc_limb_slope(ts)
-    
+
     delta_T = slope.index.to_series().diff()
-    
+
     ### calculate total duration of positive limbs
     ### in given period
     T_rising_limbs = delta_T.where(slope>0).sum()
