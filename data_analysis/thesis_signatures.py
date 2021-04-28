@@ -401,7 +401,7 @@ def calc_RBF(ts):
         t_end = t_start + delta_T
         
         ts_chunk = ts.loc[(ts.index >= t_start) & (ts.index < t_end)]  
-        n_chunks = int(len(ts) / len(ts_chunk))
+        n_chunks = int( len(ts) / len(ts_chunk) )
         
         ## get periods based on start date and frequency
         dti = pd.date_range(start=t_start, freq='12MS', periods = n_chunks)
@@ -444,9 +444,54 @@ def calc_RBF(ts):
 
 def calc_recession_curve(ts):
     
-    ## based on:
-    ## Stoelzle, Stahl & Weiler (2013) Are streamflow recession characteristics really characteristic?
-    ## Westerberg & McMillan (2015) Uncertainty in hydrological signatures
+    #### Recession curve characteristics based on:
+    ####    Stoelzle et al. (2013) Are streamflow recession characteristics 
+    ####    really characteristic?
+    #### and:
+    ####    Vogel & Kroll (1992) Regional geohydrologic-geomorphic 
+    ####    relationships for the estimation of low-flow statistics
+    ####    
+    #### Method described by Vogel & Kroll:
+    ####    "A recession period begins when a 3-day moving average begins
+    ####    to decrease and ends when it begins to increase. Only recession 
+    ####    of 10 or more consecutive daysare accepted as candidate 
+    ####    hydrograph recessions."
+    ####
+    ####    "If the total length of a candidate recession segment is I,  
+    ####    then the initial portion is predominatnly surface or storm 
+    ####    runoff, so first lambda*I days were removed from the 
+    ####    candidate recession segment."
+    ####
+    ####    "To avoid spurious observations, only accept pairs of stream-
+    ####    flow where Q_t > 0.7*Q_t-1"
+    
+    
+    _df = pd.DataFrame() 
+    
+    ## calculate 3-day moving average 
+    ts_mv = ts.rolling(window=3, center=True).mean() 
+    
+    ## calculate differences between two time steps 
+    ts_mv_diff = ts_mv.diff() 
+
+    ## mask recession periods 
+    recession_mask = ts_mv_diff <= 0.
+    
+    _df['mv3'] = ts_mv[recession_mask]     
+    _df['diff'] = ts_mv_diff[recession_mask]    
+    _df['dT'] = _df.index.to_series().diff() 
+    
+    _df['break'] = 0
+    _df.loc[ (_df['dT'] > pd.Timedelta('1d')), 'break' ] = 1 
+    
+    _df['periods'] =  _df['dT'].dt.days.ne(1).cumsum() 
+
+    
+    for period_id in _df['periods'].unique():
+        print(_df[ _df['periods'] == period_id])
+
+    
+    
     
     ### calc differences 
     slope = ts.diff() 
