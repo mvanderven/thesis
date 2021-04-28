@@ -318,44 +318,76 @@ def calc_DLD(ts):
     return N_peaks/T_declining_limbs.days
 
 def calc_i_bf(ts):
-    ## from: https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R
     
+    #### Base Flow Index following:
+    ####    Sawicz et al. (2011) Catchment classification: empirical
+    ####    analysis of hydrologic similarity based on catchment
+    ####    function in the eastern USA
+    ####
+    #### Defines Base Flow Index as ratio of long-term baseflow to
+    #### total streamflow. Calculated with following steps:
+    #### (1) use one-parameter single-pass digital filter method 
+    ####     to separate baseflow 
+    ####     Q_Dt = c * Q_Dt-1 + (1+c)/2 (Q_t - Q_t-1), c = 0.925 
+    #### (2) Baseflow equals: Q_Bt = Q_t - Q_Dt 
+    #### (3) The baseflow index is then: I_BF = Sum (Q_B / Q)     
     
-    ## Calculate baseflow according to:
-    ## https://raw.githubusercontent.com/TonyLadson/BaseflowSeparation_LyneHollick/master/BFI.R
-    
-    alpha = 0.925  
-    
+    #### coding examples from:
+    #### https://github.com/naddor/camels/blob/master/hydro/hydro_signatures.R     
+    #### with source code:
+    ####    https://raw.githubusercontent.com/TonyLadson/BaseflowSeparation_LyneHollick/master/BFI.R 
+        
+    #### handle missing values 
     if ts.isnull().any():
-        ## fill with values between 
-        ## otherwise drop 
-        ts = ts.fillna(method='ffill').dropna()
+        ts = ts.fillna(method='ffill').dropna() 
     
-    Q = ts.values 
+    #### following formatting by Sawicz (2011)
+    Q_t  = ts.values 
+    Q_D = np.zeros(len(Q_t)) 
     
-    Q_quick = np.zeros(len(ts)) 
-    Q_quick[0] = ts[0]
+    ## set initial value equal to surface flow 
+    Q_D[0] = Q_t[0] # * factor?
+        
+    #### Value of c determined by Eckhardt (2007) A comparison of baseflow 
+    #### indices, which were cal-culated with seven different baseflow 
+    #### separation methods
+    c = 0.925 
+
+    #### (1) Separate direct flow from baseflow 
+    for i in range(len(Q_t)-1):
+        Q_D[i+1] = (c * Q_D[i]) + ( ( (1+c)*0.5 ) * (Q_t[i+1] - Q_t[i]) )
     
-    for i in range(len(Q)-1):
-        Q_quick[i+1] = alpha * Q_quick[i] + 0.5*(1+alpha)*(Q[i+1]-Q[i])
-            
-    Q_base = np.where(Q_quick > 0, Q - Q_quick, Q)
-    return sum(Q_base)/ sum(Q)
+    #### (2) Subtract direct flow from total flow to extract baseflow 
+    Q_B = Q_t - Q_D  
+    
+    #### (3) Calculate baseflow index 
+    return sum(Q_B)/ sum(Q_t)
 
 def calc_RBF(ts):
     
-    ## Kuentz et al (2017) - Understanding hydrologic variability across
-    ## Europe through catchment classification 
-    ## Richard-Baker Flashiness: 
-    ## "sum of absolute values of day-to-day changes in mean daily flow
-    ## divided by the sum of all daily flows"
+    #### Richard-Baker Flashiness from:
+    ####    Kuentz et al. (2017) Understanding hydrologic variability
+    ####    across Europe through catchment classfication 
+    ####
+    #### Based on:
+    ####    Baker et al. (2004) A new flashiness index: characeteristics
+    ####    and applications to midswestern rivers and streams 1 
+    ####
+    #### Application derived from:
+    ####    Holko et al. (2011) Flashiness of mountain streams in 
+    ####    Slovakia and Austria 
+    ####
+    #### RBF defined as: Sum of absolute values of day-to-day changes in
+    #### average daily flow divided by total discharge during time interval.
+    #### Index calculated for seasonal or annual periods, can be averaged
+    #### accross years 
     
     ## resample to daily values 
     daily_ts = ts.resample('D').mean() 
     
     ## calculate sum of absolute values of day-to-day changes 
     sum_abs_diff = daily_ts.diff().abs().sum() 
-    
+
     ## calculate sum of daily flows 
     sum_flows = daily_ts.sum() 
 
