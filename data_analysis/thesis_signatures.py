@@ -382,17 +382,65 @@ def calc_RBF(ts):
     #### Index calculated for seasonal or annual periods, can be averaged
     #### accross years 
     
-    ## resample to daily values 
-    daily_ts = ts.resample('D').mean() 
     
-    ## calculate sum of absolute values of day-to-day changes 
-    sum_abs_diff = daily_ts.diff().abs().sum() 
+    #### SPLIT TIMESERIES 
+    #### ?? missing values?? 
+    ts = ts.dropna()
+    
+    ## get delta_T to estimate if dates are continuous
+    ## or with jumps 
+    dT = ts.index.to_series().diff() 
 
-    ## calculate sum of daily flows 
-    sum_flows = daily_ts.sum() 
+    ## check for jumps in timeseries  
+    if dT.max() > pd.Timedelta('1d'): #pd.Timedelta(value=1, unit='days'): 
+        
+        ## TEST FOR MULTIPLE MOMENTS 
+        ## determine chunk size 
+        t_start = ts.index.values[0] 
+        delta_T = dT.max() 
+        t_end = t_start + delta_T
+        
+        ts_chunk = ts.loc[(ts.index >= t_start) & (ts.index < t_end)]  
+        n_chunks = int(len(ts) / len(ts_chunk))
+        
+        ## get periods based on start date and frequency
+        dti = pd.date_range(start=t_start, freq='12MS', periods = n_chunks)
 
-    ## return Richard-Baker Flashiness
-    return sum_abs_diff/sum_flows
+    ## else split based on years 
+    else:
+        iter_list = ts.index.year.unique()
+        dti = pd.date_range(start = ts.index[0], freq='YS', periods = len(iter_list))
+    
+    ## go over all periods 
+    ## calculate RBF
+    collect_RBF = []
+    for i in range(len(dti)):
+
+        if i < (len(dti)-1):  
+            mask = (ts.index >= dti[i]) & (ts.index < dti[i+1])
+            
+        if i == (len(dti)-1):
+            mask = (ts.index >= dti[i])
+        
+        ## get period of interest
+        _ts = ts.loc[mask]
+        
+        if len(_ts) > 0:
+            ## sum absolute day-to-day differences 
+            _sum_abs_diff = _ts.diff().abs().sum() 
+            
+            ## sum total flow 
+            _sum_flows = _ts.sum() 
+
+            if (_sum_abs_diff > 0) & (_sum_flows > 0):
+                collect_RBF.append((_sum_abs_diff/_sum_flows))
+    
+    ## return average Richard-Baker Flashiness
+    if len(collect_RBF) > 0:
+        return_RBF = np.nanmean(np.array(collect_RBF))
+    else:
+        return_RBF = np.nan 
+    return return_RBF
 
 def calc_recession_curve(ts):
     
@@ -917,11 +965,13 @@ def calc_signatures(df_observations, df_simulations, id_col = 'loc_id',
                         print('[CALC] ', feature)  
                         
                         return_cols = func_dict[feature]['cols'] 
+                        print(feature, result_name)
+                        cdf = tw_buffer.apply(func_dict[feature]['func'])
                         
-                        try:
-                            cdf = tw_buffer.apply(func_dict[feature]['func'])
-                        except:
-                            cdf = None
+                        # try:
+                        #     cdf = tw_buffer.apply(func_dict[feature]['func'])
+                        # except:
+                        #     cdf = None
                         
                         if cdf is not None:
                             
@@ -931,7 +981,7 @@ def calc_signatures(df_observations, df_simulations, id_col = 'loc_id',
                                     tmp_df[col_name] = cdf.loc[i,:].values
                             
                             else:
-                                col_name = return_cols[0].format(tw)
+                                col_name = return_cols[0].format(result_name) 
                                 tmp_df[col_name] = cdf.values 
                                             
         tmp_df = tmp_df.set_index('ID')    
