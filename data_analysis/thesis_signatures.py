@@ -286,15 +286,21 @@ def calc_RLD(ts):
     ####
     #### Also known as: Rising Limb Density
     
+    ## get dQ and number peaks 
     slope, N_peaks = calc_limb_slope(ts)
-
+    
+    ## calculate timestep 
     delta_T = slope.index.to_series().diff()
 
     ### calculate total duration of positive limbs
-    ### in given period
-    T_rising_limbs = delta_T.where(slope>0).sum()
-
-    return N_peaks/T_rising_limbs.days
+    ### in given period 
+    mask_positive_limbs = slope > 0     
+    T_rising_limbs = delta_T.loc[ mask_positive_limbs ].sum()
+    
+    if T_rising_limbs.days > 0:
+        return N_peaks / T_rising_limbs.days 
+    else:
+        return np.nan 
 
 def calc_DLD(ts):
     
@@ -313,9 +319,17 @@ def calc_DLD(ts):
     
     ### calculate total duration of negative limbs 
     ### in given period 
-    T_declining_limbs = delta_T.where(slope<0).sum()
+    mask_declining_limbs = slope < 0 
+    T_declining_limbs = delta_T.loc[mask_declining_limbs].sum() 
     
-    return N_peaks/T_declining_limbs.days
+    if T_declining_limbs.days > 0:
+        return N_peaks / T_declining_limbs.days 
+    else:
+        return np.nan 
+    
+    # T_declining_limbs = delta_T.where(slope<0).sum()
+    
+    # return N_peaks/T_declining_limbs.days
 
 def calc_i_bf(ts):
     
@@ -340,6 +354,10 @@ def calc_i_bf(ts):
     #### handle missing values 
     if ts.isnull().any():
         ts = ts.fillna(method='ffill').dropna() 
+        
+        ## if length of timeseries (still) 0, return nan 
+        if len(ts) == 0:
+            return np.nan 
     
     #### following formatting by Sawicz (2011)
     Q_t  = ts.values 
@@ -381,11 +399,15 @@ def calc_RBF(ts):
     #### average daily flow divided by total discharge during time interval.
     #### Index calculated for seasonal or annual periods, can be averaged
     #### accross years 
-    
-    
+        
     #### SPLIT TIMESERIES 
-    #### ?? missing values?? 
+    #### ?? filling missing values?? 
     ts = ts.dropna()
+    
+    if len(ts) == 0:
+        ## if length is 0, RBF cannot be calculated 
+        ## return NaN 
+        return np.nan 
     
     ## get delta_T to estimate if dates are continuous
     ## or with jumps 
@@ -461,13 +483,27 @@ def calc_recession_curve(ts):
     ####    then the initial portion is predominatnly surface or storm 
     ####    runoff, so first lambda*I days were removed from the 
     ####    candidate recession segment."
+    ####    First guess for lambda = 0.3 
     ####
     ####    "To avoid spurious observations, only accept pairs of stream-
     ####    flow where Q_t > 0.7*Q_t-1"
+    ####
+    ####    "Fit log-log relation:
+    ####    ln(-dQ/dt) = ln(a) + b*len(Q) + eps "
+    ####    Linear reservoir assumption: b = 1 
+    ####    Use ordinary least squares estimators for a and b 
+    ####    using all accepted dQ and Q pairs 
     
+    ## Vogel & Kroll chose lambda = 0.3, looking at summer months only 
+    ## Here, (multi-) annual periods, seasons and months are used
+    ## In their study, lambda was varied between 0 and 0.8, to choose
+    ## a value of lambda corresponding to an average value of b = 1 
     
-    _df = pd.DataFrame() 
-    
+    ## lower value of lambda decreases b 
+    ## higher value of lambda increases b 
+    # init_lambda = 0.3  
+    init_lambda = 0.05
+        
     ## calculate 3-day moving average 
     ts_mv = ts.rolling(window=3, center=True).mean() 
     
@@ -475,75 +511,81 @@ def calc_recession_curve(ts):
     ts_mv_diff = ts_mv.diff() 
 
     ## mask recession periods 
-    recession_mask = ts_mv_diff <= 0.
+    recession_mask = ts_mv_diff <= 0. 
     
-    _df['mv3'] = ts_mv[recession_mask]     
-    _df['diff'] = ts_mv_diff[recession_mask]    
+    if recession_mask.sum() == 0:
+        ## no recession periods detected 
+        return [np.nan, np.nan]
+        
+    ## collect in dataframe 
+    _df = pd.DataFrame()
+    _df['Q'] = ts_mv[recession_mask]     
+    _df['dQ'] = ts_mv_diff[recession_mask]    
     _df['dT'] = _df.index.to_series().diff() 
-    
-    _df['break'] = 0
-    _df.loc[ (_df['dT'] > pd.Timedelta('1d')), 'break' ] = 1 
-    
+        
+    ## identify periods 
     _df['periods'] =  _df['dT'].dt.days.ne(1).cumsum() 
-
     
+    ## identify period length 
     for period_id in _df['periods'].unique():
-        print(_df[ _df['periods'] == period_id])
-
+        p_df = _df[ _df['periods'] == period_id]         
+        _df.loc[ p_df.index, 'len'] = len(p_df)
     
+    ## drop all periods with a length below 10 days 
+    _df_dropped = _df[ _df['len'] >= 10].copy()
     
+    ## check change in differences 
+    ## Q_t > 0.7 Q_t-1
+    Q_t1 = _df_dropped['Q'] 
+    Q_t0 = 0.7 * _df_dropped['Q'].shift(-1)
     
-    ### calc differences 
-    slope = ts.diff() 
+    ## add results to df 
+    _df_dropped['check_change'] = Q_t1 > Q_t0 
     
-    ### assume power-law relationship
-    ### dS/dt = -Q
-    ### -dQ/dt = a*Q^b
-    ### log(-dQ/dt) = log(a)+b*log(Q)
-    
-    ### plot -dQ/dt vs Q 
-    ### fit a straight line through it
-    ### a = intercept 
-    ### b = slope 
+    ## collect final results 
+    ## after checking change magnitudes 
+    _df_dropped['analyse'] = 0 
+    for period_id in _df_dropped['periods'].unique():
+        p_df = _df_dropped[ _df_dropped['periods']==period_id] 
         
-    ### get recession values 
-    recession = slope.where(slope<0, 0)
-
-    ### split timeseries in all recession times 
-    lists = np.split(recession, np.where(recession>=0)[0]+1)
-    
-    collect_dQ = []
-    collect_Q = [] 
-    
-    for _list in lists:
+        ## compute number of False occurencies 
+        n_false = len(p_df) - sum(p_df['check_change']) 
+        last_false = False 
         
-        ## only append recession periods 
-        if len(_list) > 1:
-            ixs = _list.index 
-            Q_list = ts[ixs]
-            
-            ## save all values in recession period 
-            for i in range(len(_list)):
-                if (_list[i] < -1e-6) and (Q_list[i] > 1e-6):
-                    collect_dQ.append( -_list[i] )
-                    collect_Q.append( Q_list[i] )
-
-    ### now all points collected of Q and dQ/dt (<0) 
-    ## fit a straight line though these points in log-log plot 
-    ## log(dQ/dt) = log(a) + b log(Q)
-    ## T0 = intercept 
-    ## b = slope 
+        if n_false == 1:
+            ## get index of false value 
+            idx_false = p_df[ p_df['check_change'] == False ].index         
+                    
+            ## if false idx and last idx match: continue 
+            if idx_false == p_df.tail(1).index:
+                last_false = True 
+        
+        if (n_false == 0) | (last_false) :
+            ## if regression period is accepted, discrard the first 
+            ## lambda * len(p_df) values from the period
+            n_skip = round( init_lambda * len(p_df) )
+            ix_to_keep = p_df.iloc[n_skip:].index  
+            _df_dropped.loc[ix_to_keep, 'analyse'] = 1
     
-    log_dQ = np.log10(collect_dQ) 
-    log_Q = np.log10(collect_Q) 
+    ## keep marked Q/dQ couples 
+    _df_analyse = _df_dropped[ _df_dropped['analyse'] == 1][['Q', 'dQ']].copy()
     
-    slope, intercept, log_r, log_p, log_s = stats.linregress(log_Q, log_dQ)     
-    # slope, intercept, r_value, p_value, std_err = stats.linregress(collect_Q, collect_dQ)    
+    if not len(_df_analyse) > 0:
+        return [np.nan, np.nan]
     
+    ## plot Q and delta_Q on a natural logarithmic scale 
+    _df_analyse['log_Q'] = np.log( _df_analyse['Q'] )
+    _df_analyse['log_dQ'] = np.log( abs(_df_analyse['dQ'] + 10e-6) )
+    
+    ## use ordinary least squares regression to find a and b in:
+    ## ln(-dQ) = ln(a) + b*len(Q) 
+    slope, intercept, r_value, p_value, std_err = stats.linregress( _df_analyse['log_Q'], _df_analyse['log_dQ'] )     
+    
+    ## interpret results 
     b = slope 
-    T0 = intercept 
-      
-    return [b, T0]
+    a = intercept 
+    # a = np.exp(intercept)    
+    return [b, a]
 
 ##### OVERVIEW 
 func_dict = {
@@ -605,7 +647,7 @@ func_dict = {
         },
     'src':  {
          'func': calc_recession_curve,
-        'cols': ['s_rc-{}', 'T0_rc-{}']  
+        'cols': ['b_rc-{}', 'a_rc-{}']  
         }
     }
 
@@ -890,7 +932,7 @@ def calc_signatures(df_observations, df_simulations, id_col = 'loc_id',
         df_buffer[gauge_col] = gauge_ts['value'] 
         
         ## how to handle missing data?
-        gauge_null_mask = gauge_ts.isnull().any(axis=1) 
+        # gauge_null_mask = gauge_ts.isnull().any(axis=1) 
         
         ## get ID values 
         ts_idx = df_buffer.columns  
@@ -1010,7 +1052,6 @@ def calc_signatures(df_observations, df_simulations, id_col = 'loc_id',
                         print('[CALC] ', feature)  
                         
                         return_cols = func_dict[feature]['cols'] 
-                        print(feature, result_name)
                         cdf = tw_buffer.apply(func_dict[feature]['func'])
                         
                         # try:
