@@ -88,54 +88,18 @@ def rows_to_cols(df, id_col, index_col, target_col, resample_24hr = False):
 df_simulations = rows_to_cols( df_model, 'gauge', 'time', 'dis06',
                         resample_24hr = True) 
 
-#%% 
+#%% Check for nan values 
 
 print(df_simulations.isnull().sum(axis=0).sum())
 
 #%% Calculate timeseries signatures 
 
-df_features = thesis_signatures.calc_signatures(gauge_data, df_simulations,
-                                                time_window = ['all'], # 'monthly'],
-                                                features = ['dld', 'rld'])
-                                                            # 'bf-index']) #, 
-                                                            # 'dld', 
-                                                            # 'rld', 
-                                                            # 'rbf', 
-                                                            # 'src']) 
+df_features = thesis_signatures.calc_signatures(gauge_data, df_simulations)
 
-#%% 
+print(df_features.describe())
 
+#%% Check output for nan values 
 print(df_features.isnull().sum()) 
-
-    
-    
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
