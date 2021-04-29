@@ -88,6 +88,9 @@ def calc_distr_normal(ts):
     ## drop remaining missing values 
     ts = ts.dropna() 
     
+    if len(ts) == 0:
+        return [np.nan, np.nan, np.nan]
+    
     mu = np.mean(ts)
     sigma = np.std(ts) 
         
@@ -98,13 +101,15 @@ def calc_distr_normal(ts):
         gof = calc_gof(ts, stats.norm.rvs(loc=mu, scale=sigma, size=len(ts)))
     except:
         gof = 0
-        print(gof)
     return [mu, sigma, gof]
 
 def calc_distr_log(ts, eps=1e-6):
     
     ## drop remaining missing values 
     ts = ts.dropna() 
+    
+    if len(ts) == 0:
+        return [np.nan, np.nan, np.nan]
     
     ## transform 
     Y = np.log(ts+eps) 
@@ -115,8 +120,11 @@ def calc_distr_log(ts, eps=1e-6):
     ## create an artificial dataset
     ## based on derived distribution
     ## parameters 
-    gof = calc_gof(ts, stats.lognorm.rvs(s=Y_sigma, scale=np.exp(Y_mu), size=len(ts))) 
-    
+    try:
+        gof = calc_gof(ts, stats.lognorm.rvs(s=Y_sigma, scale=np.exp(Y_mu), size=len(ts))) 
+    except:
+        gof = 0
+
     ## alternative transformation - similar results  
     # Y_mu_alt = np.log( np.mean(ts)**2 / (( np.mean(ts)**2 + np.std(ts)**2 )**0.5 )  )
     # Y_sigma_alt = (np.log( 1 + ((np.std(ts)/np.mean(ts))**2) ))**0.5
@@ -128,40 +136,49 @@ def calc_distr_gev(ts):
     
     ## drop remaining missing values 
     ts = ts.dropna() 
+    if len(ts) == 0:
+        return [np.nan, np.nan, np.nan]    
     
     ## calculate gev parameters 
     ## gumbel, so k = 0
-    a = np.pi / ((6**0.5)*np.std(ts))
-    u = np.mean(ts) - (0.577/a)
+    try:
+        a = np.pi / ((6**0.5)*np.std(ts))
+        u = np.mean(ts) - (0.577/a)
     
-    ## calculate goodness of fit 
-    ## create an artificial dataset based on
-    ## derived a and u 
-    gof = calc_gof(ts, stats.genextreme.rvs(c=0, loc = u, scale = a, size=len(ts))) 
-    
+        ## calculate goodness of fit 
+        ## create an artificial dataset based on
+        ## derived a and u 
+        gof = calc_gof(ts, stats.genextreme.rvs(c=0, loc = u, scale = a, size=len(ts))) 
+    except:
+        return [np.nan, np.nan, np.nan]
     return [u,a, gof]
 
 def calc_distr_gamma(ts):
     
     ## drop remaining missing values 
     ts = ts.dropna() 
+    if len(ts) == 0:
+        return [np.nan, np.nan, np.nan] 
     
-    ## calculate gamma parameters 
-    mu = np.mean(ts)
-    sigma = np.std(ts)
-
-    k = (mu/sigma)**2 
-    theta = sigma / (mu/sigma)
+    try:
+        ## calculate gamma parameters 
+        mu = np.mean(ts)
+        sigma = np.std(ts)
     
-    ## calculate goodness of fit 
-    ## create an artificial dataset based on
-    ## derived k and theta (rvs)
-    gof = calc_gof(ts, stats.gamma.rvs(a = k, scale = theta, size=len(ts)))
+        k = (mu/sigma)**2 
+        theta = sigma / (mu/sigma)
+        
+        ## calculate goodness of fit 
+        ## create an artificial dataset based on
+        ## derived k and theta (rvs)
+        gof = calc_gof(ts, stats.gamma.rvs(a = k, scale = theta, size=len(ts)))
+    except:
+        return [np.nan, np.nan, np.nan] 
     
     return [k, theta, gof]
 
 def calc_distr_poisson(ts):
-    return None 
+    return [np.nan, np.nan]
 
 
 ###### CORRELATION ######
@@ -909,8 +926,8 @@ def calc_features(collect_df, locations, features = feature_options, time_window
 def calc_signatures(df_observations, df_simulations, id_col = 'loc_id',
                     features = feature_options, time_window = option_time_window,
                     fdc_q = [1, 5, 10, 50, 90, 95, 99],
-                    n_alag = [1,365], n_clag = [0,1]):
-    
+                    n_alag = [1], n_clag = [0,1]):
+        
     df_out = pd.DataFrame()
     
     ## organize features 
