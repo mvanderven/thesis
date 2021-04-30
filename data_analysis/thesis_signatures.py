@@ -200,6 +200,9 @@ def calc_FDC(ts):
     
     ## drop missing values 
     ts_drop = ts.dropna() 
+
+    if len(ts_drop) == 0:
+        return int(0), int(0)
     
     ## sort values from small to large 
     ts_sorted = ts_drop.sort_values()
@@ -216,7 +219,7 @@ def calc_FDC(ts):
     
     ## calculate probability 
     prob = ((ranks / (len(ts_sorted)+1) )) * 100 
-    return prob, ts_sorted 
+    return prob, ts_sorted.values  
 
 
 def calc_FDC_q(ts, fdc_q):
@@ -225,10 +228,16 @@ def calc_FDC_q(ts, fdc_q):
     ## calc FDC curve 
     fdc_prob, fdc_val = calc_FDC(ts)
     
+    if ( type(fdc_prob) == int) or (type(fdc_val) == int):
+        return [np.nan]*len(fdc_q)
+    
+    
     ## find corresponding quantiles 
     for q in fdc_q:        
         ix_nearest = ( np.abs(fdc_prob - q) ).argmin() 
-        return_q.append(fdc_val[ix_nearest])   
+        return_q.append(fdc_val[ix_nearest])  
+        
+    # print( len(ts), len(return_q), type(return_q))
     return return_q 
 
 def calc_FDC_slope(ts, eps = 10e-6):
@@ -331,7 +340,7 @@ def calc_DLD(ts):
                                
     
     slope, N_peaks = calc_limb_slope(ts)
-    
+
     delta_T = slope.index.to_series().diff()
     
     ### calculate total duration of negative limbs 
@@ -370,12 +379,11 @@ def calc_i_bf(ts):
         
     #### handle missing values 
     if ts.isnull().any():
-        ts = ts.fillna(method='ffill').dropna() 
-        
-        ## if length of timeseries (still) 0, return nan 
-        if len(ts) == 0:
+        if len(ts) == ts.isnull().sum():
             return np.nan 
-    
+        else:
+            ts = ts.fillna(method='ffill').dropna() 
+            
     #### following formatting by Sawicz (2011)
     Q_t  = ts.values 
     Q_D = np.zeros(len(Q_t)) 
@@ -396,7 +404,11 @@ def calc_i_bf(ts):
     Q_B = Q_t - Q_D  
     
     #### (3) Calculate baseflow index 
-    return sum(Q_B)/ sum(Q_t)
+    if sum(Q_B) > 0 and sum(Q_t) > 0:
+        return sum(Q_B) / sum(Q_t)
+    else:
+        return np.nan 
+
 
 def calc_RBF(ts):
     
@@ -925,7 +937,7 @@ def calc_features(collect_df, locations, features = feature_options, time_window
 
 def calc_signatures(df_observations, df_simulations, id_col = 'loc_id',
                     features = feature_options, time_window = option_time_window,
-                    fdc_q = [1, 5, 10, 50, 90, 95, 99],
+                    fdc_q = [1, 2, 5, 10, 50, 90, 95, 99],
                     n_alag = [1], n_clag = [0,1]):
         
     df_out = pd.DataFrame()
@@ -1044,24 +1056,31 @@ def calc_signatures(df_observations, df_simulations, id_col = 'loc_id',
                         
                         if 'fdc-q' in feature: 
                             
-                            try:
-                                cdf = tw_buffer.apply(func_dict[feature]['func'], fdc_q = fdc_q) 
-                            except:
-                                cdf = None
+                            cdf = tw_buffer.apply(func_dict[feature]['func'], fdc_q = fdc_q) 
                             
                             for i, q in enumerate(fdc_q ):
                                 col_name = func_dict[feature]['cols'][0].format(q, result_name) 
-                                if cdf is not None:
+                                
+                                try:                                
                                     tmp_df[col_name] = cdf.loc[i,:].values
-                        
+                                except:
+                                    ## bug in some fdc-q 
+                                    ## cdf returns tw_buffer (with date index) 
+                                    ## bug seems fixed now -->
+                                    ##      as both fdc_q and length of
+                                    ##      tw_buffer were 7, tw_buffer
+                                    ##      returned as cdf instead of
+                                    ##      cdf with apply function 
+                                    ##      ??? 
+                                    print('failed: ', col_name)
+                                    col_name = None
+
                         else:
                             return_col = func_dict[feature]['cols'][0].format(result_name) 
-
-                            try:
-                                cdf = tw_buffer.apply(func_dict[feature]['func'])
-                                tmp_df[return_col] = cdf.values 
-                            except:
-                                cdf = None 
+                            
+                            cdf = tw_buffer.apply(func_dict[feature]['func'])
+                            tmp_df[return_col] = cdf.values 
+                            
                                                            
                                              
                         
