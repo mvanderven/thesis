@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np 
 from pathlib import Path
 from scipy import stats
+import dask.dataframe as dd 
 
 ##########################################
 ####       SUPPORT FUNCTIONS          #### 
@@ -152,7 +153,8 @@ def rows_to_cols(df, id_col, index_col, target_col, resample_24hr = False):
 
 #### FEATURE TYPES 
 sorted_features = {
-    'stats':        ['normal', 'log', 'gev', 'gamma', 'poisson'],
+    # 'stats':        ['normal', 'log', 'gev', 'gamma', 'poisson'],
+    'stats':        ['normal', 'log', 'gev', 'gamma'],
     'correlation':  ['n-acorr', 'n-ccorr'],
     'fdc':          ['fdc-q', 'fdc-slope', 'lf-ratio'],
     'hydro':        ['bf-index', 'dld', 'rld', 'rbf', 'src']
@@ -997,7 +999,36 @@ def calc_signatures(df_observations, df_simulations, id_col = 'loc_id',
 
 
 
+def pa_calc_signatures(gauge_id, fn_simulations, gauge_dir): 
+        
+    ## GET SIMULATION DATA
+    ## load simulation data 
+    df_model = dd.read_csv(fn_simulations) 
 
+    ## select buffer corresponding with gauge & load into memory 
+    df_model = df_model[ df_model['gauge'] == gauge_id]
+    df_model = df_model.set_index('ID') 
+    
+    ## load data into memory 
+    df_model = df_model.compute() 
+    
+    ## LOAD GAUGE DATA 
+    gauge_fn = gauge_dir / '{}_Q_Day.Cmd.txt'.format(gauge_id)
+    
+    if gauge_fn.exists():
+        df_gauge, meta = read_gauge_data([gauge_fn]) 
+        
+        # df_gauge = df_gauge[ (df_gauge['date'] >= '1991') &  (df_gauge['date'] < '2020')].copy()
+        ## TEST 
+        df_gauge = df_gauge[ (df_gauge['date'] >= '1991') &  (df_gauge['date'] < '1994')].copy()
+        
+        df_simulations = rows_to_cols(df_model, 'gauge', 'time', 'dis24')
+
+        out_df = calc_signatures(df_gauge, df_simulations, time_window=['all'])
+        return out_df
+    
+    else:
+        return None 
 
 
 
