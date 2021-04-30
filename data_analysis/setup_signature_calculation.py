@@ -11,7 +11,6 @@ import pandas as pd
 from pathlib import Path 
 import numpy as np 
 import matplotlib.pyplot as plt
-import glob 
 
 import thesis_utils as utils 
 import thesis_plotter as plotter 
@@ -20,12 +19,12 @@ import thesis_signatures
 #%% Set path files 
 
 dir_timeseries = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\model_data")
-fn_ts = dir_timeseries / "efas_timeseries_1991_1992-test.csv" 
-
+ 
 dir_gauges = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\training_data") 
 fn_gauges = dir_gauges / "V1_grdc_efas_selection-cartesius-snapped.csv" 
 
 #%% Load model data  
+print('[INFO] load model data')
 
 files = [file for file in dir_timeseries.glob('efas_timeseries_*_buffer_4.csv')]
 
@@ -39,19 +38,20 @@ for file in files:
 print('[INFO] model data loaded')
 print(df_model)
 print()
-# print(df_model.info())
+print(df_model.info())
 
 #%% Load gauge metadata 
 df_gauges = pd.read_csv(fn_gauges, index_col=0)  
 
 #%% Load gauge timeseries data 
 
+print('\n[INFO] load gauge observations')
 do_sample = True
 gauge_ids = df_gauges.index.values 
 
 ## sample?
 if do_sample:
-    n_samples = 3
+    n_samples = 20
     gauge_ids = df_gauges.sample(n=n_samples).index.values 
 
 dir_v1 = dir_gauges/ 'V1' 
@@ -63,13 +63,12 @@ gauge_files = [ dir_v1 /'{}_Q_Day.Cmd.txt'.format(gauge_id) for gauge_id in gaug
 gauge_data, meta_grdc = utils.read_gauge_data( gauge_files, dtype='grdc')
 
 ## filter time 
-gauge_data = gauge_data[ (gauge_data['date'] >= '1991') &  (gauge_data['date'] < '1994')].copy()
+gauge_data = gauge_data[ (gauge_data['date'] >= '1991') &  (gauge_data['date'] < '1996')].copy()
 # gauge_data = gauge_data[ gauge_data['date'] >= '1991'].copy()
 
-print('\n[INFO] gauge observations loaded')
+print('[INFO] gauge observations loaded')
 print(gauge_data)
 print()
-# print(gauge_data.info())
 
 #%% Filter model data based on selected gauge_ids 
 
@@ -112,7 +111,8 @@ print(df_simulations.isnull().sum(axis=0).sum())
 #%% Calculate timeseries signatures 
 
 print('\n[INFO] calculate signatures')
-df_features = thesis_signatures.calc_signatures(gauge_data, df_simulations)
+df_features = thesis_signatures.calc_signatures(gauge_data, df_simulations,
+                                                time_window = ['all'])
 
 # print(df_features.describe())
 
@@ -120,7 +120,12 @@ df_features = thesis_signatures.calc_signatures(gauge_data, df_simulations)
 print(df_features.isnull().sum()) 
 
 
+#%% Save 
 
+dir_features = Path(r"C:\Users\mvand\Documents\Master EE\Year 4\Thesis\data\training_data\feature_vector") 
+fn_out = dir_features / "test_features_sample10.csv" 
+
+df_features.to_csv(fn_out)
 
 
 

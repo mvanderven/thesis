@@ -16,7 +16,6 @@ from datetime import datetime
 import thesis_utils as utils 
 
 #### FEATURE TYPES 
-
 sorted_features = {
     'stats':        ['normal', 'log', 'gev', 'gamma', 'poisson'],
     'correlation':  ['n-acorr', 'n-ccorr'],
