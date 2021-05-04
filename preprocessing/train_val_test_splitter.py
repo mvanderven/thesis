@@ -11,7 +11,6 @@ Created on Tue May  4 09:47:19 2021
 import pandas as pd 
 from pathlib import Path 
 from sklearn.model_selection import train_test_split
-import numpy as np 
 
 #%% Paths 
 
@@ -122,12 +121,5 @@ def concatenate_files(file_list, output_name):
 
 # test_files = [file for file in test_dir.glob('signatures_*.csv')]  
 # df_test = concatenate_files(test_files, test_dir / 'signatures_TEST.csv')
-
-
-
-
-
-
-
 
 
